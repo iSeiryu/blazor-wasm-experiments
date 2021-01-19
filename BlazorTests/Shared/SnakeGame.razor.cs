@@ -50,15 +50,12 @@ namespace BlazorTests.Shared {
             await _context.SetFontAsync("12px serif");
             await _context.FillTextAsync("Score: " + _snake.Length, _canvas.Width - 55, 10);
 
-            foreach(var cell in _snake.Tail.ToArray()[..^1]) {
+            foreach(var cell in _snake.Tail) {
                 await _context.FillRectAsync(cell.X, cell.Y, _cellSize, _cellSize);
             }
 
             await _context.SetFillStyleAsync("green");
-            var half = _cellSize / 2;
-            await _context.BeginPathAsync();
-            await _context.ArcAsync(_snake.Head.X + half, _snake.Head.Y + half, half, 0, 2 * Math.PI);
-            await _context.FillAsync();
+            await _context.FillRectAsync(_snake.Head.X, _snake.Head.Y, _cellSize, _cellSize);
 
             await _context.SetFillStyleAsync("yellow");
             await _context.FillRectAsync(_egg.X, _egg.Y, _cellSize, _cellSize);
