@@ -18,7 +18,6 @@ namespace BlazorTests.Models.SnakeGame {
 
         public Cell Head => Tail[^1];
         public List<Cell> Tail { get; } = new() { new Cell(0, 0) };
-        public int Length { get; private set; } = 1;
 
         public void Update() {
             for (var i = 0; i < Tail.Count - 1; i++)
@@ -62,8 +61,6 @@ namespace BlazorTests.Models.SnakeGame {
 
         public bool Ate(Egg egg) {
             if (egg.X == Head.X && egg.Y == Head.Y) {
-                Length++;
-
                 var last = Tail.Last();
                 Tail.Add(new Cell(last.X, last.Y));
 

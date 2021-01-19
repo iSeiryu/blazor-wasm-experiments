@@ -56,7 +56,7 @@ namespace BlazorTests.Shared {
             await ClearScreenAsync();
             await _context.SetFillStyleAsync("white");
             await _context.SetFontAsync("12px serif");
-            await _context.FillTextAsync("Score: " + _snake.Length, _canvas.Width - 55, 10);
+            await _context.FillTextAsync("Score: " + _snake.Tail.Count, _canvas.Width - 55, 10);
 
             foreach (var cell in _snake.Tail) {
                 await _context.FillRectAsync(cell.X, cell.Y, _cellSize, _cellSize);
@@ -75,9 +75,9 @@ namespace BlazorTests.Shared {
             if (_gameOver)
                 await InitAsync();
             else if (e.Code == "ArrowDown" ||
-                e.Code == "ArrowUp"   ||
-                e.Code == "ArrowLeft" ||
-                e.Code == "ArrowRight") {
+                     e.Code == "ArrowUp"   ||
+                     e.Code == "ArrowLeft" ||
+                     e.Code == "ArrowRight") {
                 _snake.SetDirection(e.Code.Replace("Arrow", ""));
             }
         }
