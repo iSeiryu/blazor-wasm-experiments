@@ -72,5 +72,13 @@ namespace BlazorTests.Models.SnakeGame {
 
             return false;
         }
+
+        public bool IsDead() {
+            for (var i = 0; i < Tail.Count - 1; i++)
+                if (Head.X == Tail[i].X && Head.Y == Tail[i].Y)
+                    return true;
+
+            return false;
+        }
     }
 }

@@ -18,25 +18,33 @@ namespace BlazorTests.Shared {
 
         protected override async Task OnAfterRenderAsync(bool firstRender) {
             if (firstRender) {
-                _cellSize = (int)_canvas.Width / 20;
-                _egg = new Egg(_cellSize, (int)_canvas.Width, (int)_canvas.Height);
-                _snake = new Snake(_cellSize, (int)_canvas.Width, (int)_canvas.Height);
                 _context = await _canvas.CreateCanvas2DAsync();
-
                 await _container.FocusAsync();
-                await GameLoopAsync();
+                await InitAsync();
             }
+        }
+
+        private async Task InitAsync() {
+            _cellSize = (int)_canvas.Width / 20;
+            _egg = new Egg(_cellSize, (int)_canvas.Width, (int)_canvas.Height);
+            _snake = new Snake(_cellSize, (int) _canvas.Width, (int) _canvas.Height);
+            _gameOver = false;
+
+            await GameLoopAsync();
         }
 
         private async Task GameLoopAsync() {
             if (_gameOver) return;
-            
+
             if (_snake.Ate(_egg)) {
                 _egg.NewLocation();
             }
-            
+
             _snake.Update();
             await DrawAsync();
+            
+            if (_snake.IsDead())
+                await GameOver();
 
             await Task.Delay(150);
             await GameLoopAsync();
@@ -50,7 +58,7 @@ namespace BlazorTests.Shared {
             await _context.SetFontAsync("12px serif");
             await _context.FillTextAsync("Score: " + _snake.Length, _canvas.Width - 55, 10);
 
-            foreach(var cell in _snake.Tail) {
+            foreach (var cell in _snake.Tail) {
                 await _context.FillRectAsync(cell.X, cell.Y, _cellSize, _cellSize);
             }
 
@@ -63,8 +71,10 @@ namespace BlazorTests.Shared {
             await _context.EndBatchAsync();
         }
 
-        private void HandleInput(KeyboardEventArgs e) {
-            if (e.Code == "ArrowDown" ||
+        private async Task HandleInput(KeyboardEventArgs e) {
+            if (_gameOver)
+                await InitAsync();
+            else if (e.Code == "ArrowDown" ||
                 e.Code == "ArrowUp"   ||
                 e.Code == "ArrowLeft" ||
                 e.Code == "ArrowRight") {
@@ -76,6 +86,14 @@ namespace BlazorTests.Shared {
             await _context.ClearRectAsync(0, 0, _canvas.Width, _canvas.Height);
             await _context.SetFillStyleAsync("black");
             await _context.FillRectAsync(0, 0, _canvas.Width, _canvas.Height);
+        }
+
+        private async Task GameOver() {
+            _gameOver = true;
+            
+            await _context.SetFillStyleAsync("red");
+            await _context.SetFontAsync("48px serif");
+            await _context.FillTextAsync("Game Over", _canvas.Width / 4, _canvas.Height / 2);
         }
 
         public void Dispose() {
