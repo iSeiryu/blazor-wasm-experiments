@@ -1,7 +1,7 @@
 ﻿using System;
 
 namespace BlazorTests.Models.SnakeGame {
-    public class Egg {
+    public class Egg : Cell {
         private readonly int _size;
         private readonly int _xLimit;
         private readonly int _yLimit;
@@ -14,9 +14,6 @@ namespace BlazorTests.Models.SnakeGame {
             
             NewLocation();
         }
-
-        public double X { get; private set; }
-        public double Y { get; private set; }
 
         public void NewLocation() {
             X = _random.Next(0, _xLimit) / _size * _size;

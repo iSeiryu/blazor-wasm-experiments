@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 
 namespace BlazorTests.Models.SnakeGame {
     public class Snake {
@@ -8,7 +9,6 @@ namespace BlazorTests.Models.SnakeGame {
 
         private double _xSpeed,
                        _ySpeed;
-        private readonly List<int> _tail = new();
 
         public Snake(int size, int fieldWidth, int fieldHeight) {
             _size = size;
@@ -16,23 +16,27 @@ namespace BlazorTests.Models.SnakeGame {
             _yLimit = fieldHeight - size;
         }
 
-        public double X { get; private set; }
-        public double Y { get; private set; }
-        public int Total { get; private set; } = 1;
+        public Cell Head => Tail[^1];
+        public List<Cell> Tail { get; } = new() { new Cell(0, 0) };
+        public int Length { get; private set; } = 1;
 
         public void Update() {
-            if (X > _xLimit)
-                X = 0;
-            else if (X < 0)
-                X = _xLimit;
-            else if (Y > _yLimit)
-                Y = 0;
-            else if (Y < 0)
-                Y = _yLimit;
-            else {
-                X += _xSpeed;
-                Y += _ySpeed;
-            }
+            for (var i = 0; i < Tail.Count - 1; i++)
+                Tail[i] = Tail[i + 1];
+
+            Tail[^1] = new Cell(Head.X, Head.Y);
+            
+            Head.X += _xSpeed;
+            Head.Y += _ySpeed;
+            
+            if (Head.X > _xLimit)
+                Head.X = 0;
+            else if (Head.X < 0)
+                Head.X = _xLimit;
+            else if (Head.Y > _yLimit)
+                Head.Y = 0;
+            else if (Head.Y < 0)
+                Head.Y = _yLimit;
         }
 
         public void SetDirection(string direction) {
@@ -56,8 +60,17 @@ namespace BlazorTests.Models.SnakeGame {
             }
         }
 
-        public void Eat() {
-            Total++;
+        public bool Ate(Egg egg) {
+            if (egg.X == Head.X && egg.Y == Head.Y) {
+                Length++;
+
+                var last = Tail.Last();
+                Tail.Add(new Cell(last.X, last.Y));
+
+                return true;
+            }
+
+            return false;
         }
     }
 }

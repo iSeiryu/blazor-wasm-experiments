@@ -13,16 +13,16 @@ namespace BlazorTests.Shared {
         private ElementReference _container;
         private Snake _snake;
         private Egg _egg;
-        private int _size = 0;
+        private int _cellSize = 0;
         private bool _gameOver = false;
 
         protected override async Task OnAfterRenderAsync(bool firstRender) {
             if (firstRender) {
-                _size = (int)_canvas.Width / 20;
-                _egg = new Egg(_size, (int) _canvas.Width, (int) _canvas.Height);
-                _snake = new Snake(_size, (int) _canvas.Width, (int) _canvas.Height);
+                _cellSize = (int)_canvas.Width / 20;
+                _egg = new Egg(_cellSize, (int)_canvas.Width, (int)_canvas.Height);
+                _snake = new Snake(_cellSize, (int)_canvas.Width, (int)_canvas.Height);
                 _context = await _canvas.CreateCanvas2DAsync();
-                
+
                 await _container.FocusAsync();
                 await GameLoopAsync();
             }
@@ -30,29 +30,39 @@ namespace BlazorTests.Shared {
 
         private async Task GameLoopAsync() {
             if (_gameOver) return;
-            if (_egg.X == _snake.X && _egg.Y == _snake.Y) {
-                _snake.Eat();
+            
+            if (_snake.Ate(_egg)) {
                 _egg.NewLocation();
             }
+            
             _snake.Update();
             await DrawAsync();
-            
+
             await Task.Delay(150);
             await GameLoopAsync();
         }
 
         private async Task DrawAsync() {
             await _context.BeginBatchAsync();
-            
-            await ClearScreen();
+
+            await ClearScreenAsync();
             await _context.SetFillStyleAsync("white");
             await _context.SetFontAsync("12px serif");
-            await _context.FillTextAsync("Score: " + _snake.Total, _canvas.Width - 55, 10);
-            
-            await _context.FillRectAsync(_snake.X, _snake.Y, _size, _size);
-            await _context.SetFillStyleAsync("red");
-            await _context.FillRectAsync(_egg.X, _egg.Y, _size, _size);
-            
+            await _context.FillTextAsync("Score: " + _snake.Length, _canvas.Width - 55, 10);
+
+            foreach(var cell in _snake.Tail.ToArray()[..^1]) {
+                await _context.FillRectAsync(cell.X, cell.Y, _cellSize, _cellSize);
+            }
+
+            await _context.SetFillStyleAsync("green");
+            var half = _cellSize / 2;
+            await _context.BeginPathAsync();
+            await _context.ArcAsync(_snake.Head.X + half, _snake.Head.Y + half, half, 0, 2 * Math.PI);
+            await _context.FillAsync();
+
+            await _context.SetFillStyleAsync("yellow");
+            await _context.FillRectAsync(_egg.X, _egg.Y, _cellSize, _cellSize);
+
             await _context.EndBatchAsync();
         }
 
@@ -65,7 +75,7 @@ namespace BlazorTests.Shared {
             }
         }
 
-        private async Task ClearScreen() {
+        private async Task ClearScreenAsync() {
             await _context.ClearRectAsync(0, 0, _canvas.Width, _canvas.Height);
             await _context.SetFillStyleAsync("black");
             await _context.FillRectAsync(0, 0, _canvas.Width, _canvas.Height);
