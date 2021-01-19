@@ -1,3 +1,7 @@
-﻿<div id="snake_container" tabindex="0" @onkeydown="HandleInput" @ref="_container">
+﻿<div id="snake_container" tabindex="0" 
+     @onkeydown="HandleInput" 
+     @ontouchstart="HandleTouchStart"
+     @ontouchmove="HandleTouchMove"
+     @ref="_container">
     <BECanvas Width="400" Height="400" @ref="_canvas"></BECanvas>
 </div>

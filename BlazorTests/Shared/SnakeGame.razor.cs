@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Blazor.Extensions;
 using Blazor.Extensions.Canvas.Canvas2D;
@@ -27,7 +28,7 @@ namespace BlazorTests.Shared {
         private async Task InitAsync() {
             _cellSize = (int)_canvas.Width / 20;
             _egg = new Egg(_cellSize, (int)_canvas.Width, (int)_canvas.Height);
-            _snake = new Snake(_cellSize, (int) _canvas.Width, (int) _canvas.Height);
+            _snake = new Snake(_cellSize, (int)_canvas.Width, (int)_canvas.Height);
             _gameOver = false;
 
             await GameLoopAsync();
@@ -42,7 +43,7 @@ namespace BlazorTests.Shared {
 
             _snake.Update();
             await DrawAsync();
-            
+
             if (_snake.IsDead())
                 await GameOver();
 
@@ -74,12 +75,35 @@ namespace BlazorTests.Shared {
         private async Task HandleInput(KeyboardEventArgs e) {
             if (_gameOver)
                 await InitAsync();
-            else if (e.Code == "ArrowDown" ||
-                     e.Code == "ArrowUp"   ||
-                     e.Code == "ArrowLeft" ||
-                     e.Code == "ArrowRight") {
-                _snake.SetDirection(e.Code.Replace("Arrow", ""));
+
+            else if (e.Code == "ArrowDown")  _snake.SetDirection(Direction.Down);
+            else if (e.Code == "ArrowUp")    _snake.SetDirection(Direction.Up);
+            else if (e.Code == "ArrowLeft")  _snake.SetDirection(Direction.Left);
+            else if (e.Code == "ArrowRight") _snake.SetDirection(Direction.Right);
+        }
+
+        private TouchPoint _firstTouch = null;
+        private async Task HandleTouchStart(TouchEventArgs e) {
+            if (_gameOver)
+                await InitAsync();
+
+            _firstTouch = e.Touches.FirstOrDefault();
+        }
+
+        private void HandleTouchMove(TouchEventArgs e) {
+            if (_firstTouch == null) return;
+
+            var xDiff = _firstTouch.ClientX - e.Touches[0].ClientX;
+            var yDiff = _firstTouch.ClientY - e.Touches[0].ClientY;
+
+            /*most significant*/
+            if ( Math.Abs( xDiff ) > Math.Abs( yDiff ) ) {
+                _snake.SetDirection(xDiff > 0 ? Direction.Left : Direction.Right);
+            } else {
+                _snake.SetDirection(yDiff > 0 ? Direction.Up : Direction.Down);
             }
+
+            _firstTouch = null;
         }
 
         private async Task ClearScreenAsync() {
@@ -90,7 +114,7 @@ namespace BlazorTests.Shared {
 
         private async Task GameOver() {
             _gameOver = true;
-            
+
             await _context.SetFillStyleAsync("red");
             await _context.SetFontAsync("48px serif");
             await _context.FillTextAsync("Game Over", _canvas.Width / 4, _canvas.Height / 2);
