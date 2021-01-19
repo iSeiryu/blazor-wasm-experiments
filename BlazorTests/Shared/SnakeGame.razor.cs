@@ -46,12 +46,12 @@ namespace BlazorTests.Shared {
             
             await ClearScreen();
             await _context.SetFillStyleAsync("white");
+            await _context.SetFontAsync("12px serif");
+            await _context.FillTextAsync("Score: " + _snake.Total, _canvas.Width - 55, 10);
+            
             await _context.FillRectAsync(_snake.X, _snake.Y, _size, _size);
             await _context.SetFillStyleAsync("red");
             await _context.FillRectAsync(_egg.X, _egg.Y, _size, _size);
-            await _context.SetFillStyleAsync("white");
-            await _context.SetFontAsync("48px serif");
-            await _context.FillTextAsync("Score: " + _snake.Total, 100, 200);
             
             await _context.EndBatchAsync();
         }

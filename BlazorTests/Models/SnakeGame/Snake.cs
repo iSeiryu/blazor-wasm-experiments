@@ -15,7 +15,7 @@ namespace BlazorTests.Models.SnakeGame {
             _xLimit = fieldWidth - size;
             _yLimit = fieldHeight - size;
         }
-        
+
         public double X { get; private set; }
         public double Y { get; private set; }
         public int Total { get; private set; } = 1;
@@ -29,9 +29,10 @@ namespace BlazorTests.Models.SnakeGame {
                 Y = 0;
             else if (Y < 0)
                 Y = _yLimit;
-            
-            X += _xSpeed;
-            Y += _ySpeed;
+            else {
+                X += _xSpeed;
+                Y += _ySpeed;
+            }
         }
 
         public void SetDirection(string direction) {

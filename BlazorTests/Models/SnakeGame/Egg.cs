@@ -5,7 +5,7 @@ namespace BlazorTests.Models.SnakeGame {
         private readonly int _size;
         private readonly int _xLimit;
         private readonly int _yLimit;
-        private readonly Random _random = new(20);
+        private readonly Random _random = new();
         
         public Egg(int size, int xLimit, int yLimit) {
             _size = size;
