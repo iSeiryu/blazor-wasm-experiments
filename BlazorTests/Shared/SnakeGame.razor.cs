@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using Blazor.Extensions;
 using Blazor.Extensions.Canvas.Canvas2D;
 using BlazorTests.Models.SnakeGame;
@@ -6,7 +7,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 
 namespace BlazorTests.Shared {
-    public partial class SnakeGame {
+    public partial class SnakeGame : IDisposable {
         private Canvas2DContext _context;
         private BECanvasComponent _canvas;
         private ElementReference _container;
@@ -68,6 +69,11 @@ namespace BlazorTests.Shared {
             await _context.ClearRectAsync(0, 0, _canvas.Width, _canvas.Height);
             await _context.SetFillStyleAsync("black");
             await _context.FillRectAsync(0, 0, _canvas.Width, _canvas.Height);
+        }
+
+        public void Dispose() {
+            _gameOver = true;
+            _context.Dispose();
         }
     }
 }

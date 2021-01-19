@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 
 namespace BlazorTests.Shared {
-    public partial class TetrisGame {
+    public partial class TetrisGame : IDisposable {
         private Canvas2DContext _context;
         private static Timer _timer;
         private double x, y = 50;
@@ -60,6 +60,11 @@ namespace BlazorTests.Shared {
             await _context.StrokeAsync();
 
             await _context.EndBatchAsync();
+        }
+
+        public void Dispose() {
+            _timer.Dispose();
+            _context.Dispose();
         }
     }
 }
