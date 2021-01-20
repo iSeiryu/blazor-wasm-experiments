@@ -21,7 +21,7 @@ namespace BlazorTests.Shared {
         private Egg _egg;
         private int _cellSize = 0;
         private bool _gameOver;
-
+        
         protected override async Task OnAfterRenderAsync(bool firstRender) {
             if (firstRender) {
                 _context = await _canvas.GetContext2DAsync();
@@ -31,7 +31,10 @@ namespace BlazorTests.Shared {
         }
 
         private async Task InitAsync() {
-            _cellSize = _width / 20;
+            possibleContentWidth = Math.Min(possibleContentWidth, 500);
+            _width = possibleContentWidth - 25;
+            _height = possibleContentWidth - 25;
+            _cellSize = _width / 25;
             _egg = new Egg(_cellSize, _width, _height);
             _snake = new Snake(_cellSize, _width, _height);
             _gameOver = false;
@@ -83,6 +86,8 @@ namespace BlazorTests.Shared {
             else if (e.Code == "ArrowUp")    _snake.SetDirection(SnakeDirection.Up);
             else if (e.Code == "ArrowLeft")  _snake.SetDirection(SnakeDirection.Left);
             else if (e.Code == "ArrowRight") _snake.SetDirection(SnakeDirection.Right);
+
+            Console.WriteLine(e.Code);
         }
 
         private async Task HandleTouchStart(TouchEventArgs e) {

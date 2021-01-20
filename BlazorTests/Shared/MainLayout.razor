@@ -1,4 +1,6 @@
-﻿@inherits LayoutComponentBase
+﻿@using System.Text.Json
+@inherits LayoutComponentBase
+@inject IJSRuntime JS;
 
 <div class="page">
     <div class="sidebar">
@@ -10,8 +12,23 @@
             <a href="http://blazor.net" target="_blank" class="ml-md-auto">About</a>
         </div>
 
-        <div class="content px-4">
-            @Body
-        </div>
+        <CascadingValue Value="possibleContentWidth">
+            <div class="content">
+                @Body
+            </div>
+        </CascadingValue>
     </div>
 </div>
+
+@code {
+    private int possibleContentWidth { get; set; } = 400;
+
+    protected override async Task OnInitializedAsync() {
+        await GetMedia();
+    }
+
+    private async Task GetMedia() {
+        var windowWidth = await JS.InvokeAsync<int>("window.getCurrentWindowWidth");
+        possibleContentWidth = windowWidth - windowWidth % 25;
+    }
+}

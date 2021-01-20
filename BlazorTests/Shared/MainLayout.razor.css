@@ -43,6 +43,10 @@
     .top-row a, .top-row .btn-link {
         margin-left: 0;
     }
+
+    .main {
+        margin: auto;
+    }
 }
 
 @media (min-width: 641px) {

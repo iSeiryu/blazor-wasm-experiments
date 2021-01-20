@@ -1,10 +1,24 @@
-﻿<div id="snake_container" tabindex="0"
+﻿<Styled @bind-Classname="@snake">
+    width: @(_width)px;
+    height: @(_height)px;
+</Styled>
+
+<div id="snake_container" tabindex="0"
      @onkeydown="HandleInput"
      @ontouchstart="HandleTouchStart"
      @ontouchmove="HandleTouchMove"
+     class="@snake"
      @ref="_container">
     <Canvas id="snake_canvas"
-            width="400"
-            height="400"
+            width="@_width"
+            height="@_height"
+            class="@snake"
             @ref="_canvas"></Canvas>
 </div>
+
+@code{
+    private string snake;
+
+    [CascadingParameter]
+    protected int possibleContentWidth { get; set; }
+}
