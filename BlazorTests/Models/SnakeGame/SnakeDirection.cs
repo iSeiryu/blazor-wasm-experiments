@@ -1,5 +1,5 @@
 ﻿namespace BlazorTests.Models.SnakeGame {
-    public enum Direction {
+    public enum SnakeDirection {
         Up,
         Down,
         Left,

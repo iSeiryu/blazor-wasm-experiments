@@ -38,21 +38,21 @@ namespace BlazorTests.Models.SnakeGame {
                 Head.Y = _yLimit;
         }
 
-        public void SetDirection(Direction direction) {
-            switch (direction) {
-                case Direction.Up:
+        public void SetDirection(SnakeDirection snakeDirection) {
+            switch (snakeDirection) {
+                case SnakeDirection.Up:
                     _xSpeed = 0;
                     _ySpeed = -_size;
                     break;
-                case Direction.Down:
+                case SnakeDirection.Down:
                     _xSpeed = 0;
                     _ySpeed = _size;
                     break;
-                case Direction.Left:
+                case SnakeDirection.Left:
                     _xSpeed = -_size;
                     _ySpeed = 0;
                     break;
-                case Direction.Right:
+                case SnakeDirection.Right:
                     _xSpeed = _size;
                     _ySpeed = 0;
                     break;
