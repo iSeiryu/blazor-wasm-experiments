@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+    <input type="number" placeholder="35" />
+    <button onclick="perf()">Fib</button>
+    <div class="container">
+        <ul class="list"></ul>
+    </div>
+</body>
+<script>
+    function fib(n) {
+        if ((n == 0) || (n == 1))
+            return n;
+        else
+            return fib(n - 1) + fib(n - 2);
+    }
+
+    function perf() {
+        const num = document.querySelector("input").valueAsNumber;
+
+        var startTime = performance.now();
+        var result = fib(num);
+        var endTime = performance.now();
+
+        var output = `n ${num}: got ${result} in ${(endTime - startTime)} ms`;
+        displayOutput(output);
+    }
+
+    function runPerf() {
+        for (var i = 0; i < 20; i++) {
+            perf();
+        }
+    }
+
+    function displayOutput(output) {
+        console.log(output);
+        var li = document.createElement("li");
+        li.append(output);
+        document.querySelector(".list").append(li);
+    }
+</script>
+
+</html>
