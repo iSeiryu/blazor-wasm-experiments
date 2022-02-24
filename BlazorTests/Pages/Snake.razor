@@ -1,5 +1,34 @@
 ﻿@page "/snake"
+<Styled @bind-Classname="@headerClass">
+    height: @(_headerHeight)px !important;
+</Styled>
 
-<h3>Snake</h3>
+<h3 class="@headerClass">Snake</h3>
 
-<SnakeGame />
+<CascadingValue Value="@possibleGameSize">
+    <SnakeGame />
+</CascadingValue>
+
+@code{
+
+    [CascadingParameter(Name = "possibleContentWidth")]
+    protected double possibleContentWidth { get; set; } = 400;
+
+    [CascadingParameter(Name = "possibleContentHeight")]
+    protected double possibleContentHeight { get; set; } = 400;
+    
+    string headerClass;
+
+    private double _headerHeight = 28;
+
+    private int possibleGameSize { get; set; }
+
+    protected override void OnParametersSet() {
+        var possibleGameWidth = (int) Math.Floor(possibleContentWidth);
+        var possibleGameHeight = (int) Math.Floor((possibleContentHeight - _headerHeight));
+        possibleGameWidth = possibleGameWidth - (possibleGameWidth % SnakeGame.CellSize);
+        possibleGameHeight = possibleGameHeight - (possibleGameHeight % SnakeGame.CellSize);
+        possibleGameSize = (int) Math.Min(possibleGameHeight, possibleGameWidth);
+        possibleGameSize = (int) Math.Max(possibleGameSize, 150);
+    }
+}

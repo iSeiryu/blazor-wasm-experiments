@@ -1,6 +1,7 @@
 ﻿<Styled @bind-Classname="@snake">
     width: @(_width)px;
     height: @(_height)px;
+    float: right;
 </Styled>
 
 <div id="snake_container" tabindex="0"
@@ -20,5 +21,5 @@
     private string snake;
 
     [CascadingParameter]
-    protected int possibleContentWidth { get; set; }
+    protected int possibleGameSize { get; set; }
 }

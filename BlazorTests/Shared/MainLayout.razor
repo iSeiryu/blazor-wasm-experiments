@@ -1,34 +1,55 @@
 ﻿@using System.Text.Json
+@using BlazorTests.Shared
 @inherits LayoutComponentBase
-@inject IJSRuntime JS;
+@inject IJSRuntime JS
+
+<Styled @bind-Classname="@topRowHeightClass">
+    height: @(_topRowHeight)rem;
+</Styled>
+
+<Styled @bind-Classname="@sideBarWidthClass">
+    width: @(_sideBarWidth)px;
+</Styled>
 
 <div class="page">
-    <div class="sidebar">
+    <div class="@sideBarWidthClass sidebar">
         <NavMenu />
     </div>
 
     <div class="main">
-        <div class="top-row px-4">
+        <div class="@topRowHeightClass top-row px-4">
             <a href="http://blazor.net" target="_blank" class="ml-md-auto">About</a>
         </div>
 
-        <CascadingValue Value="possibleContentWidth">
-            <div class="content">
-                @Body
-            </div>
+        <CascadingValue Value="@possibleContentWidth" Name="possibleContentWidth">
+            <CascadingValue Value="@possibleContentHeight" Name="possibleContentHeight">
+                <div class="content">
+                    @Body
+                </div>
+            </CascadingValue>
         </CascadingValue>
     </div>
 </div>
 
 @code {
-    private int possibleContentWidth { get; set; } = 400;
+    private const int remToPxRatio = 16;
+    private const int mediaMinWidth = 641;
+    private string topRowHeightClass;
+    private string sideBarWidthClass;
+    private double _topRowHeight { get; set; } = 3.5;
+    private int _sideBarWidth { get; set; } = 250;
+    private double possibleContentWidth { get; set; } = 0;
+    private double possibleContentHeight { get; set; } = 0;
 
-    protected override async Task OnInitializedAsync() {
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
         await GetMedia();
     }
 
     private async Task GetMedia() {
         var windowWidth = await JS.InvokeAsync<int>("window.getCurrentWindowWidth");
-        possibleContentWidth = windowWidth - windowWidth % 25;
+        var windowHeight = await JS.InvokeAsync<int>("window.getCurrentWindowHeight");
+        possibleContentWidth = windowWidth - (windowWidth <= mediaMinWidth ? 0 : _sideBarWidth);
+        possibleContentHeight = (windowHeight - (_topRowHeight * remToPxRatio));
+            Console.WriteLine($"{possibleContentWidth} {possibleContentHeight}");
     }
 }

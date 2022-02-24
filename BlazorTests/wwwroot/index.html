@@ -47,7 +47,10 @@
     <script src="_framework/blazor.webassembly.js"></script>
     <script>
         window.getCurrentWindowWidth = () => {
-            return window.screen.width;
+            return window.innerWidth;
+        }
+        window.getCurrentWindowHeight = () => {
+            return window.innerHeight;
         }
     </script>
 </body>

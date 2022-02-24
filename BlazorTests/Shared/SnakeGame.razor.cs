@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Components.Web;
 
 namespace BlazorTests.Shared {
     public partial class SnakeGame : IAsyncDisposable {
+
+        public static int CellSize = 25;
         private Context2D _context;
         private Canvas _canvas;
         private ElementReference _container;
@@ -31,10 +33,10 @@ namespace BlazorTests.Shared {
         }
 
         private async Task InitAsync() {
-            possibleContentWidth = Math.Min(possibleContentWidth, 500);
-            _width = possibleContentWidth - 25;
-            _height = possibleContentWidth - 25;
-            _cellSize = _width / 25;
+            _width = possibleGameSize - 25;
+            _height = possibleGameSize - 25;
+            _cellSize = _width / CellSize;
+            StateHasChanged();
             _egg = new Egg(_cellSize, _width, _height);
             _snake = new Snake(_cellSize, _width, _height);
             _gameOver = false;
