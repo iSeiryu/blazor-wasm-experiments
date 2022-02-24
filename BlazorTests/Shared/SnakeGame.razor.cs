@@ -32,16 +32,23 @@ namespace BlazorTests.Shared {
             }
         }
 
+        protected override void OnParametersSet() {
+            InitalizeGame();
+        }
+
         private async Task InitAsync() {
+            InitalizeGame();
+            await GameLoopAsync();
+        }
+
+        private void InitalizeGame()
+        {
             _width = possibleGameSize - 25;
             _height = possibleGameSize - 25;
             _cellSize = _width / CellSize;
-            StateHasChanged();
             _egg = new Egg(_cellSize, _width, _height);
             _snake = new Snake(_cellSize, _width, _height);
             _gameOver = false;
-
-            await GameLoopAsync();
         }
 
         private async Task GameLoopAsync() {
