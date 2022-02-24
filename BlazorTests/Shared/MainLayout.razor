@@ -3,21 +3,21 @@
 @inherits LayoutComponentBase
 @inject IJSRuntime JS
 
-<Styled @bind-Classname="@topRowHeightClass">
+<Styled @bind-Classname="@_topRowHeightClass">
     height: @(_topRowHeight)rem;
 </Styled>
 
-<Styled @bind-Classname="@sideBarWidthClass">
+<Styled @bind-Classname="@_sideBarWidthClass">
     width: @(_sideBarWidth)px;
 </Styled>
 
 <div class="page">
-    <div class="@sideBarWidthClass sidebar">
+    <div class="@_sideBarWidthClass sidebar">
         <NavMenu />
     </div>
 
     <div class="main">
-        <div class="@topRowHeightClass top-row px-4">
+        <div class="@_topRowHeightClass top-row px-4">
             <a href="http://blazor.net" target="_blank" class="ml-md-auto">About</a>
         </div>
 
@@ -32,24 +32,28 @@
 </div>
 
 @code {
-    private const int remToPxRatio = 16;
-    private const int mediaMinWidth = 641;
-    private string topRowHeightClass;
-    private string sideBarWidthClass;
-    private double _topRowHeight { get; set; } = 3.5;
-    private int _sideBarWidth { get; set; } = 250;
     private double possibleContentWidth { get; set; } = 0;
     private double possibleContentHeight { get; set; } = 0;
+    private const int _remToPxRatio = 16;
+    private const int _mediaMinWidth = 641;
+    private const int _sideBarWidth = 250;
+    private const double _topRowHeight = 3.5;
+    private string _topRowHeightClass;
+    private string _sideBarWidthClass;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         await GetMedia();
     }
 
     private async Task GetMedia() {
-        var windowWidth = await JS.InvokeAsync<int>("window.getCurrentWindowWidth");
-        var windowHeight = await JS.InvokeAsync<int>("window.getCurrentWindowHeight");
-        possibleContentWidth = windowWidth - (windowWidth <= mediaMinWidth ? 0 : _sideBarWidth);
-        possibleContentHeight = (windowHeight - (_topRowHeight * remToPxRatio));
-            Console.WriteLine($"{possibleContentWidth} {possibleContentHeight}");
+        var windowWidth = await JS.InvokeAsync<double>("window.getCurrentWindowWidth");
+        var windowHeight = await JS.InvokeAsync<double>("window.getCurrentWindowHeight");
+        SetPossibleContentDimensions(windowWidth, windowHeight);
+    }
+
+    private void SetPossibleContentDimensions(double windowWidth, double windowHeight)
+    {
+        possibleContentWidth = windowWidth - (windowWidth <= _mediaMinWidth ? 0 : _sideBarWidth);
+        possibleContentHeight = (windowHeight - (_topRowHeight * _remToPxRatio));
     }
 }

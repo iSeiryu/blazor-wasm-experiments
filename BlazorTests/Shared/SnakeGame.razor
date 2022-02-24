@@ -1,4 +1,4 @@
-﻿<Styled @bind-Classname="@snake">
+﻿<Styled @bind-Classname="@_snakeClass">
     width: @(_width)px;
     height: @(_height)px;
     float: right;
@@ -8,18 +8,17 @@
      @onkeydown="HandleInput"
      @ontouchstart="HandleTouchStart"
      @ontouchmove="HandleTouchMove"
-     class="@snake"
+     class="@_snakeClass"
      @ref="_container">
     <Canvas id="snake_canvas"
             width="@_width"
             height="@_height"
-            class="@snake"
+            class="@_snakeClass"
             @ref="_canvas"></Canvas>
 </div>
 
 @code{
-    private string snake;
-
     [CascadingParameter]
     protected int possibleGameSize { get; set; }
+    private string _snakeClass;
 }
