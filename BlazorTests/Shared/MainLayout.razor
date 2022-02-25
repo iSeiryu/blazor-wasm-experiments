@@ -62,9 +62,8 @@
     }
 
     private async Task GetMedia() {
-        var windowWidth = await BrowserResizeService.GetInnerWidth(JS);
-        var windowHeight = await BrowserResizeService.GetInnerHeight(JS);
-        SetPossibleContentDimensions(windowWidth, windowHeight);
+        var dimensions = await BrowserResizeService.GetWindowDimensions(JS);
+        SetPossibleContentDimensions(dimensions.Width, dimensions.Height);
     }
 
     private void SetPossibleContentDimensions(double windowWidth, double windowHeight)

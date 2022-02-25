@@ -1,6 +1,7 @@
 using Microsoft.JSInterop;
 using System;
 using System.Threading.Tasks;
+using BlazorTests.Models;
 
 namespace BlazorTests
 {
@@ -19,9 +20,9 @@ namespace BlazorTests
             return await jSRuntime.InvokeAsync<int>("browserResize.getInnerHeight");
         }
 
-        public static async Task<int> GetInnerWidth(IJSRuntime jSRuntime)
+        public static async Task<WindowDimensions> GetWindowDimensions(IJSRuntime jSRuntime)
         {
-            return await jSRuntime.InvokeAsync<int>("browserResize.getInnerWidth");
+            return await jSRuntime.InvokeAsync<WindowDimensions>("browserResize.getWindowDimensions");
         }
     }
 }

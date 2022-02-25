@@ -43,8 +43,8 @@ namespace BlazorTests.Shared {
 
         private void InitalizeGame()
         {
-            _width = possibleGameSize - 25;
-            _height = possibleGameSize - 25;
+            _width = possibleGameSize - CellSize;
+            _height = possibleGameSize - CellSize;
             _cellSize = _width / CellSize;
             _egg = new Egg(_cellSize, _width, _height);
             _snake = new Snake(_cellSize, _width, _height);
