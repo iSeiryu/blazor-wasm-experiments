@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Components.Web;
 namespace BlazorTests.Shared {
     public partial class SnakeGame : IAsyncDisposable {
 
-        public static int CellSize = 25;
+        internal static int CellSize = 25;
         private Context2D _context;
         private Canvas _canvas;
         private ElementReference _container;
