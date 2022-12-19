@@ -1,0 +1,35 @@
+@using System.Diagnostics;
+
+@page "/fib"
+
+<PageTitle>Fibonacci</PageTitle>
+
+<h1>Fib</h1>
+
+<input @bind="number" type="number" />
+<button class="btn btn-primary" @onclick="fib">Click me</button>
+<p role="status">@output</p>
+
+@code {
+string output = "";
+int number { get; set; } = 1;
+Stopwatch timer = new();
+
+void fib() {
+    timer.Reset();
+    timer.Start();
+
+    var result = fib(number);
+
+    timer.Stop();
+    output = "Time taken in: " + timer.Elapsed.ToString(@"m\:ss\.fff");
+}
+
+int fib(int n)
+{
+    if ((n == 0) || (n == 1))
+        return n;
+    else
+        return fib(n - 1) + fib(n - 2);
+}
+}
