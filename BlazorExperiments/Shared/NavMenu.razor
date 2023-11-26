@@ -1,52 +1,53 @@
-﻿<div class="top-row pl-4 navbar navbar-dark">
-    <a class="navbar-brand" href="">Home</a>
-    <button class="navbar-toggler" @onclick="ToggleNavMenu">
-        <span class="navbar-toggler-icon"></span>
-    </button>
+﻿<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">BlazorApp5</a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
 </div>
 
-<div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
-    <ul class="nav flex-column">
-        <li class="nav-item px-3">
+<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="oi oi-home" aria-hidden="true"></span> Home
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
             </NavLink>
-        </li>
-        <li class="nav-item px-3">
+        </div>
+        <div class="nav-item px-3">
             <NavLink class="nav-link" href="snake">
-                <span class="oi oi-loop" aria-hidden="true"></span> Snake
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Snake
             </NavLink>
-        </li>
-        <li class="nav-item px-3">
+        </div>
+        <div class="nav-item px-3">
             <NavLink class="nav-link" href="tetris">
-                <span class="oi oi-project" aria-hidden="true"></span> Tetris
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Tetris
             </NavLink>
-        </li>
-        <li class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="oi oi-plus" aria-hidden="true"></span> Counter
-            </NavLink>
-        </li>
-        <li class="nav-item px-3">
+        </div>
+        <div class="nav-item px-3">
             <NavLink class="nav-link" href="fib">
-                <span class="oi oi-plus" aria-hidden="true"></span> Fib
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Fib
             </NavLink>
-        </li>
-        <li class="nav-item px-3">
-            <NavLink class="nav-link" href="fetchdata">
-                <span class="oi oi-list-rich" aria-hidden="true"></span> Fetch data
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="counter">
+                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
             </NavLink>
-        </li>
-    </ul>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="weather">
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
+            </NavLink>
+        </div>
+    </nav>
 </div>
 
 @code {
-private bool collapseNavMenu = true;
+    private bool collapseNavMenu = true;
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
 
-private string NavMenuCssClass => collapseNavMenu ? "collapse" : null;
-
-private void ToggleNavMenu()
-{
-    collapseNavMenu = !collapseNavMenu;
-}
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
 }
