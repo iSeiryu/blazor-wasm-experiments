@@ -1,18 +1,18 @@
-﻿<div id="snake_container" tabindex="0"
+﻿<div id="snake_container"
+     tabindex="0"
      @onkeydown="HandleInput"
      @ontouchstart="HandleTouchStart"
      @ontouchmove="HandleTouchMove"
-     class="@_snakeClass"
+     style="width: @(_width + 4)px; height: @(_height + 4)px !important; display: grid; align-items: center; justify-content: center;"
      @ref="_container">
     <Excubo.Blazor.Canvas.Canvas id="snake_canvas"
-                                 width="@_width"
-                                 height="@_height"
-                                 class="@_snakeClass"
+                                 width=@(_width * _devicePixelRatio)
+                                 height=@(_height * _devicePixelRatio)
+                                 style=@_style
                                  @ref="_canvas"></Excubo.Blazor.Canvas.Canvas>
 </div>
 
 @code {
     [CascadingParameter]
     protected int possibleGameSize { get; set; }
-    private string _snakeClass;
 }

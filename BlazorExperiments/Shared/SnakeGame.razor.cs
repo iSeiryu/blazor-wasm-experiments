@@ -14,8 +14,10 @@ public partial class SnakeGame : IAsyncDisposable
     private ElementReference _container;
     private TouchPoint _previousTouch = null;
 
+    private const double _devicePixelRatio = 2.4375;
     private int _width = 400,
                 _height = 400;
+    string _style = "";
 
     private Snake _snake;
     private Egg _egg;
@@ -27,6 +29,7 @@ public partial class SnakeGame : IAsyncDisposable
         if (firstRender)
         {
             _context = await _canvas.GetContext2DAsync();
+            await _context.ScaleAsync(_devicePixelRatio, _devicePixelRatio);
             await _container.FocusAsync();
             await InitAsync();
         }
@@ -45,8 +48,9 @@ public partial class SnakeGame : IAsyncDisposable
 
     private void InitalizeGame()
     {
-        _width = possibleGameSize - CellSize;
-        _height = possibleGameSize - CellSize;
+        //_width = possibleGameSize - CellSize;
+        //_height = possibleGameSize - CellSize;
+        _style = $"width: {_width}px; height: {_height}px;";
         _cellSize = _width / CellSize;
         _egg = new Egg(_cellSize, _width, _height);
         _snake = new Snake(_cellSize, _width, _height);
@@ -69,7 +73,7 @@ public partial class SnakeGame : IAsyncDisposable
         if (_snake.IsDead())
             await GameOver();
 
-        await Task.Delay(20);
+        await Task.Delay(100);
         await GameLoopAsync();
     }
 
