@@ -1,7 +1,4 @@
-﻿using System;
-using System.Linq;
-using System.Threading.Tasks;
-using BlazorExperiments.UI.Models.SnakeGame;
+﻿using BlazorExperiments.UI.Models.SnakeGame;
 using Excubo.Blazor.Canvas;
 using Excubo.Blazor.Canvas.Contexts;
 using Microsoft.AspNetCore.Components;
@@ -11,7 +8,6 @@ namespace BlazorExperiments.UI.Shared;
 
 public partial class SnakeGame : IAsyncDisposable
 {
-
     internal static int CellSize = 25;
     private Context2D _context;
     private Canvas _canvas;
@@ -59,7 +55,8 @@ public partial class SnakeGame : IAsyncDisposable
 
     private async Task GameLoopAsync()
     {
-        if (_gameOver) return;
+        if (_gameOver)
+            return;
 
         if (_snake.Ate(_egg))
         {
@@ -72,26 +69,31 @@ public partial class SnakeGame : IAsyncDisposable
         if (_snake.IsDead())
             await GameOver();
 
-        await Task.Delay(150);
+        await Task.Delay(20);
         await GameLoopAsync();
     }
 
     private async Task DrawAsync()
     {
-        await using var batch = await _context.CreateBatchAsync();
+        await using var batch = _context.CreateBatch();
 
         await ClearScreenAsync();
         await batch.FillStyleAsync("white");
         await batch.FontAsync("12px serif");
         await batch.FillTextAsync("Score: " + _snake.Tail.Count, _width - 55, 10);
 
+        await batch.FillStyleAsync("green");
         foreach (var cell in _snake.Tail)
         {
             await batch.FillRectAsync(cell.X, cell.Y, _cellSize, _cellSize);
+            await batch.StrokeStyleAsync("white");
+            await batch.StrokeRectAsync(cell.X, cell.Y, _cellSize, _cellSize);
         }
 
-        await batch.FillStyleAsync("green");
+        await batch.FillStyleAsync("brown");
         await batch.FillRectAsync(_snake.Head.X, _snake.Head.Y, _cellSize, _cellSize);
+        await batch.StrokeStyleAsync("white");
+        await batch.StrokeRectAsync(_snake.Head.X, _snake.Head.Y, _cellSize, _cellSize);
 
         await batch.FillStyleAsync("yellow");
         await batch.FillRectAsync(_egg.X, _egg.Y, _cellSize, _cellSize);
@@ -102,10 +104,14 @@ public partial class SnakeGame : IAsyncDisposable
         if (_gameOver)
             await InitAsync();
 
-        else if (e.Code == "ArrowDown") _snake.SetDirection(SnakeDirection.Down);
-        else if (e.Code == "ArrowUp") _snake.SetDirection(SnakeDirection.Up);
-        else if (e.Code == "ArrowLeft") _snake.SetDirection(SnakeDirection.Left);
-        else if (e.Code == "ArrowRight") _snake.SetDirection(SnakeDirection.Right);
+        else if (e.Code == "ArrowDown")
+            _snake.SetDirection(SnakeDirection.Down);
+        else if (e.Code == "ArrowUp")
+            _snake.SetDirection(SnakeDirection.Up);
+        else if (e.Code == "ArrowLeft")
+            _snake.SetDirection(SnakeDirection.Left);
+        else if (e.Code == "ArrowRight")
+            _snake.SetDirection(SnakeDirection.Right);
 
         Console.WriteLine(e.Code);
     }
@@ -115,12 +121,13 @@ public partial class SnakeGame : IAsyncDisposable
         if (_gameOver)
             await InitAsync();
 
-        _previousTouch = e.Touches.FirstOrDefault();
+        _previousTouch = e?.Touches.FirstOrDefault();
     }
 
     private void HandleTouchMove(TouchEventArgs e)
     {
-        if (_previousTouch == null) return;
+        if (_previousTouch == null)
+            return;
 
         var xDiff = _previousTouch.ClientX - e.Touches[0].ClientX;
         var yDiff = _previousTouch.ClientY - e.Touches[0].ClientY;

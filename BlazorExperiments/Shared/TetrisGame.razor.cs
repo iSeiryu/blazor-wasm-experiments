@@ -1,10 +1,8 @@
-﻿using System;
-using System.Threading.Tasks;
-using System.Timers;
-using Excubo.Blazor.Canvas;
+﻿using Excubo.Blazor.Canvas;
 using Excubo.Blazor.Canvas.Contexts;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Timer = System.Timers.Timer;
 
 namespace BlazorExperiments.UI.Shared;
 

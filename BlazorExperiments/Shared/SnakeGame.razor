@@ -1,24 +1,18 @@
-﻿<Styled @bind-Classname="@_snakeClass">
-    width: @(_width)px;
-    height: @(_height)px;
-    float: right;
-</Styled>
-
-<div id="snake_container" tabindex="0"
+﻿<div id="snake_container" tabindex="0"
      @onkeydown="HandleInput"
      @ontouchstart="HandleTouchStart"
      @ontouchmove="HandleTouchMove"
      class="@_snakeClass"
      @ref="_container">
-    <Canvas id="snake_canvas"
-            width="@_width"
-            height="@_height"
-            class="@_snakeClass"
-            @ref="_canvas"></Canvas>
+    <Excubo.Blazor.Canvas.Canvas id="snake_canvas"
+                                 width="@_width"
+                                 height="@_height"
+                                 class="@_snakeClass"
+                                 @ref="_canvas"></Excubo.Blazor.Canvas.Canvas>
 </div>
 
-@code{
-[CascadingParameter]
-protected int possibleGameSize { get; set; }
-private string _snakeClass;
+@code {
+    [CascadingParameter]
+    protected int possibleGameSize { get; set; }
+    private string _snakeClass;
 }

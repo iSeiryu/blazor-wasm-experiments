@@ -1,9 +1,5 @@
 ﻿@page "/snake"
-<Styled @bind-Classname="@_headerClass">
-    height: @(_headerHeight)px !important;
-</Styled>
-
-<h3 class="@_headerClass">Snake</h3>
+@using BlazorExperiments.UI.Shared
 
 <CascadingValue Value="@_possibleGameSize">
     <SnakeGame />
@@ -16,7 +12,6 @@
     protected double possibleContentHeight { get; set; } = 400;
     private int _possibleGameSize { get; set; }
     private const int _minimumGameSize = 150;
-    private string _headerClass;
     private double _headerHeight = 28;
 
     protected override void OnParametersSet() {

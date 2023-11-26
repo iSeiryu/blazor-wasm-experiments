@@ -1,7 +1,5 @@
-using Microsoft.JSInterop;
-using System;
-using System.Threading.Tasks;
 using BlazorExperiments.UI.Models;
+using Microsoft.JSInterop;
 
 namespace BlazorExperiments.UI.Services;
 

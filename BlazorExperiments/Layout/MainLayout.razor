@@ -4,32 +4,20 @@
 @implements IDisposable
 @inject IJSRuntime JS
 
-<Styled @bind-Classname="@_topRowHeightClass">
-    height: @(_topRowHeight)rem;
-</Styled>
-
-<Styled @bind-Classname="@_sideBarWidthClass">
-    width: @(_sideBarWidth)px;
-</Styled>
-
 <div class="page">
-    <div class="@_sideBarWidthClass sidebar">
+    <div class="sidebar">
         <NavMenu />
     </div>
 
-    <div class="main">
-        <div class="@_topRowHeightClass top-row px-4">
-            <a href="http://blazor.net" target="_blank" class="ml-md-auto">About</a>
+    <main>
+        <div class="top-row px-4">
+            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
         </div>
 
-        <CascadingValue Value="@possibleContentWidth" Name="possibleContentWidth">
-            <CascadingValue Value="@possibleContentHeight" Name="possibleContentHeight">
-                <div class="content">
-                    @Body
-                </div>
-            </CascadingValue>
-        </CascadingValue>
-    </div>
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
 </div>
 
 @code {
@@ -47,13 +35,14 @@
         BrowserResizeService.OnResize -= BrowserHasResized;
     }
 
-    protected override async Task OnInitializedAsync() {
+    protected override async Task OnInitializedAsync()
+    {
         BrowserResizeService.OnResize += BrowserHasResized;
 
         await JS.InvokeAsync<object>("browserResize.registerResizeCallback");
 
         await GetMedia();
-    } 
+    }
 
     private async Task BrowserHasResized()
     {
@@ -61,7 +50,8 @@
         StateHasChanged();
     }
 
-    private async Task GetMedia() {
+    private async Task GetMedia()
+    {
         var dimensions = await BrowserResizeService.GetWindowDimensions(JS);
         SetPossibleContentDimensions(dimensions.Width, dimensions.Height);
     }

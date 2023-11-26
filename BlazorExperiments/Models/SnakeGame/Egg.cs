@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace BlazorExperiments.UI.Models.SnakeGame;
+﻿namespace BlazorExperiments.UI.Models.SnakeGame;
 
 public class Egg : Cell
 {
