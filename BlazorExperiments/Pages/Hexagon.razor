@@ -1,0 +1,11 @@
+﻿@page "/hexagon"
+@using Excubo.Blazor.Canvas
+@using Excubo.Blazor.Canvas.Contexts
+
+@inject IJSRuntime JS
+
+<Excubo.Blazor.Canvas.Canvas id="hexagon_canvas"
+                             width=@(_width * _devicePixelRatio)
+                             height=@(_height * _devicePixelRatio)
+                             style=@_style
+                             @ref="_canvas"></Excubo.Blazor.Canvas.Canvas>
