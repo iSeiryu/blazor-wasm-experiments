@@ -9,19 +9,19 @@ namespace BlazorExperiments.UI.Shared;
 
 public partial class SnakeGame : IAsyncDisposable
 {
-    internal static int CellSize = 20;
+    const int CellSize = 20;
     private Context2D _context;
     private Canvas _canvas;
     private ElementReference _container;
-    private TouchPoint _previousTouch = null;
+    private TouchPoint? _previousTouch = null;
 
-    private double _devicePixelRatio = 1;
-    private int _width = 400,
-                _height = 400;
     string _style = "";
+    private double _devicePixelRatio = 1;
     private const int _heightBuffer = 50;
     private const int _mediaMinWidth = 641;
     private const int _sideBarWidth = 250;
+    private int _width = 400,
+                _height = 400;
 
     private Snake _snake;
     private Egg _egg;
@@ -126,8 +126,6 @@ public partial class SnakeGame : IAsyncDisposable
             _snake.SetDirection(SnakeDirection.Left);
         else if (e.Code == "ArrowRight")
             _snake.SetDirection(SnakeDirection.Right);
-
-        Console.WriteLine(e.Code);
     }
 
     private async Task HandleTouchStart(TouchEventArgs e)
@@ -143,11 +141,15 @@ public partial class SnakeGame : IAsyncDisposable
         if (_previousTouch == null)
             return;
 
-        var xDiff = _previousTouch.ClientX - e.Touches[0].ClientX;
-        var yDiff = _previousTouch.ClientY - e.Touches[0].ClientY;
+        const int sensitivity = 5;
+        var xDiff = Math.Abs(_previousTouch.ClientX - e.Touches[0].ClientX);
+        var yDiff = Math.Abs(_previousTouch.ClientY - e.Touches[0].ClientY);
+
+        if (xDiff < sensitivity && yDiff < sensitivity)
+            return;
 
         // most significant
-        if (Math.Abs(xDiff) > Math.Abs(yDiff))
+        if (xDiff > yDiff)
         {
             _snake.SetDirection(xDiff > 0 ? SnakeDirection.Left : SnakeDirection.Right);
         }
@@ -171,7 +173,7 @@ public partial class SnakeGame : IAsyncDisposable
         _gameOver = true;
 
         await _context.FillStyleAsync("red");
-        await _context.FontAsync("48px serif");
+        await _context.FontAsync("42px serif");
         await _context.FillTextAsync("Game Over", _width / 4, _height / 2);
     }
 

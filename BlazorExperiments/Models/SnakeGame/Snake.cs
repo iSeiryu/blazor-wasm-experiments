@@ -1,13 +1,11 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-
-namespace BlazorExperiments.UI.Models.SnakeGame;
+﻿namespace BlazorExperiments.UI.Models.SnakeGame;
 
 public class Snake
 {
     private readonly int _size;
     private readonly int _xLimit;
     private readonly int _yLimit;
+    private SnakeDirection _currentDirection;
 
     private double _xSpeed,
                    _ySpeed;
@@ -44,6 +42,17 @@ public class Snake
 
     public void SetDirection(SnakeDirection snakeDirection)
     {
+        //check if the new direction is the opposite of the current direction
+        if (Tail.Count > 1 &&
+            (
+                snakeDirection == SnakeDirection.Up && _currentDirection == SnakeDirection.Down ||
+                snakeDirection == SnakeDirection.Down && _currentDirection == SnakeDirection.Up ||
+                snakeDirection == SnakeDirection.Left && _currentDirection == SnakeDirection.Right ||
+                snakeDirection == SnakeDirection.Right && _currentDirection == SnakeDirection.Left)
+            )
+            return;
+
+        _currentDirection = snakeDirection;
         switch (snakeDirection)
         {
             case SnakeDirection.Up:
