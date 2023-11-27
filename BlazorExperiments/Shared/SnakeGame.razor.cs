@@ -1,4 +1,5 @@
 ﻿using BlazorExperiments.UI.Models.SnakeGame;
+using BlazorExperiments.UI.Services;
 using Excubo.Blazor.Canvas;
 using Excubo.Blazor.Canvas.Contexts;
 using Microsoft.AspNetCore.Components;
@@ -8,21 +9,38 @@ namespace BlazorExperiments.UI.Shared;
 
 public partial class SnakeGame : IAsyncDisposable
 {
-    internal static int CellSize = 25;
+    internal static int CellSize = 20;
     private Context2D _context;
     private Canvas _canvas;
     private ElementReference _container;
     private TouchPoint _previousTouch = null;
 
-    private const double _devicePixelRatio = 2.4375;
+    private double _devicePixelRatio = 1;
     private int _width = 400,
                 _height = 400;
     string _style = "";
+    private const int _heightBuffer = 50;
+    private const int _mediaMinWidth = 641;
+    private const int _sideBarWidth = 250;
 
     private Snake _snake;
     private Egg _egg;
     private int _cellSize = 0;
     private bool _gameOver;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var windowProperties = await BrowserResizeService.GetWindowProperties(JS);
+        var sideBarWidth = windowProperties.Width > _mediaMinWidth ? _sideBarWidth : 0;
+        var topMenuHeight = sideBarWidth == 0 ? 55 : 0;
+
+        _devicePixelRatio = windowProperties.DevicePixelRatio;
+        _width = (int)(windowProperties.Width - sideBarWidth - 50);
+        _height = (int)(windowProperties.Height - _heightBuffer - topMenuHeight);
+        _width = _width - (_width % CellSize);
+        _height = _height - (_height % CellSize);
+        _style = $"width: {_width}px; height: {_height}px;";
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -35,11 +53,6 @@ public partial class SnakeGame : IAsyncDisposable
         }
     }
 
-    protected override void OnParametersSet()
-    {
-        InitalizeGame();
-    }
-
     private async Task InitAsync()
     {
         InitalizeGame();
@@ -48,10 +61,7 @@ public partial class SnakeGame : IAsyncDisposable
 
     private void InitalizeGame()
     {
-        //_width = possibleGameSize - CellSize;
-        //_height = possibleGameSize - CellSize;
-        _style = $"width: {_width}px; height: {_height}px;";
-        _cellSize = _width / CellSize;
+        _cellSize = CellSize;
         _egg = new Egg(_cellSize, _width, _height);
         _snake = new Snake(_cellSize, _width, _height);
         _gameOver = false;
