@@ -142,14 +142,14 @@ public partial class SnakeGame : IAsyncDisposable
             return;
 
         const int sensitivity = 5;
-        var xDiff = Math.Abs(_previousTouch.ClientX - e.Touches[0].ClientX);
-        var yDiff = Math.Abs(_previousTouch.ClientY - e.Touches[0].ClientY);
+        var xDiff = _previousTouch.ClientX - e.Touches[0].ClientX;
+        var yDiff = _previousTouch.ClientY - e.Touches[0].ClientY;
 
-        if (xDiff < sensitivity && yDiff < sensitivity)
+        if (Math.Abs(xDiff) < sensitivity && Math.Abs(yDiff) < sensitivity)
             return;
 
         // most significant
-        if (xDiff > yDiff)
+        if (Math.Abs(xDiff) > Math.Abs(yDiff))
         {
             _snake.SetDirection(xDiff > 0 ? SnakeDirection.Left : SnakeDirection.Right);
         }
