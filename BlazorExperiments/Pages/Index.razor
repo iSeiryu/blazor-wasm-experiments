@@ -1,5 +1,23 @@
 ﻿@page "/"
+@using BlazorExperiments.UI.Models
+@using BlazorExperiments.UI.Services
 
-<div>
-    Blazor Tests
+@inject IJSRuntime JS
+
+<div class="content">
+    <h3>Current window info</h3>
+    <div class="d-grid">
+        <div><label>Window Width: </label><span>@Props?.Width</span></div>
+        <div><label>Window Height: </label><span>@Props?.Height</span></div>
+        <div><label>Device Pixel Ratio: </label><span>@Props?.DevicePixelRatio</span></div>
+    </div>
 </div>
+
+@code {
+    WindowProperties? Props;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Props = await BrowserResizeService.GetWindowProperties(JS);
+    }
+}
