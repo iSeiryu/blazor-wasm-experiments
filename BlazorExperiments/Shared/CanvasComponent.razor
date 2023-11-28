@@ -1,0 +1,23 @@
+﻿@inject IJSRuntime JS
+
+<div id="canvas_container"
+     tabindex="0"
+     style="width: @(_width + 4)px; height: @(_height + 4)px !important; display: grid; align-items: center; justify-content: center;"
+     @ref="_container">
+    <Excubo.Blazor.Canvas.Canvas id="@Id"
+                                 width=@(_width * _devicePixelRatio)
+                                 height=@(_height * _devicePixelRatio)
+                                 style=@_style
+                                 @ref="_canvas"></Excubo.Blazor.Canvas.Canvas>
+</div>
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = "some_canvas";
+
+    [Parameter]
+    public Func<Task> InitializeAsync { get; set; }
+
+    [Parameter]
+    public Func<Task> LoopAsync { get; set; }
+}
