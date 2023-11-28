@@ -1,6 +1,7 @@
 using BlazorExperiments.UI.Services;
 using Excubo.Blazor.Canvas;
 using Excubo.Blazor.Canvas.Contexts;
+using Timer = System.Timers.Timer;
 
 namespace BlazorExperiments.UI.Pages;
 
@@ -33,6 +34,11 @@ public partial class Hexagon : IAsyncDisposable
     static double cx, cy, dieX, dieY;
     readonly List<Line> lines = new();
 
+    DateTime lastTime = DateTime.Now;
+    int timePassed = 0;
+
+    Timer _timer;
+
     protected override async Task OnParametersSetAsync()
     {
         var windowProperties = await BrowserResizeService.GetWindowProperties(JS);
@@ -52,10 +58,14 @@ public partial class Hexagon : IAsyncDisposable
             _ctx = await _canvas.GetContext2DAsync();
             await _ctx.ScaleAsync(_devicePixelRatio, _devicePixelRatio);
             await Initialize();
+
+            _timer = new Timer(10);
+            _timer.Elapsed += async (_, _) => { await Loop(); };
+            _timer.Enabled = true;
         }
     }
 
-    public async Task Initialize()
+    public async ValueTask Initialize()
     {
         cx = _width / 2;
         cy = _height / 2;
@@ -65,12 +75,9 @@ public partial class Hexagon : IAsyncDisposable
 
         await _ctx.FillStyleAsync("black");
         await _ctx.FillRectAsync(0, 0, _width, _height);
-
-        // Start the loop
-        await Loop();
     }
 
-    private async Task Loop()
+    private async ValueTask Loop()
     {
         tick++;
 
@@ -84,15 +91,29 @@ public partial class Hexagon : IAsyncDisposable
             lines.Add(new());
 
         foreach (var line in lines)
-        {
             await Step(line);
-        }
 
-        await Task.Delay(1);
-        await Loop(); // Keep looping
+        await DrawFps();
     }
 
-    async Task Step(Line line)
+    async ValueTask DrawFps()
+    {
+        if (timePassed > 70)
+        {
+            timePassed = 0;
+            await _ctx.ClearRectAsync(0, 0, 120, 30);
+            await _ctx.FontAsync("bold 20px Arial");
+            await _ctx.FillTextAsync(
+                Math.Round((1000 / (DateTime.Now - lastTime).TotalMilliseconds) * 100) / 100 + " FPS",
+                10,
+                20
+            );
+        }
+        timePassed++;
+        lastTime = DateTime.Now;
+    }
+
+    async ValueTask Step(Line line)
     {
         line.time++;
         line.cumulativeTime++;
@@ -121,6 +142,7 @@ public partial class Hexagon : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        _timer.Dispose();
         await _ctx.DisposeAsync();
     }
 
