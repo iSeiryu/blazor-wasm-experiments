@@ -1,7 +1,7 @@
 ﻿@using System.Text.Json
 @using BlazorExperiments.UI.Services;
 @inherits LayoutComponentBase
-@implements IDisposable
+@inject IJSRuntime JS
 
 <div class="page">
     <div class="sidebar">
@@ -16,35 +16,8 @@
 </div>
 
 @code {
-    public void Dispose()
+    protected override async Task OnInitializedAsync()
     {
-        //BrowserResizeService.OnResize -= BrowserHasResized;
+        await JS.InvokeAsync<object>("browserResize.registerResizeCallback");
     }
-
-    // protected override async Task OnInitializedAsync()
-    // {
-    //     BrowserResizeService.OnResize += BrowserHasResized;
-
-    //     await JS.InvokeAsync<object>("browserResize.registerResizeCallback");
-
-    //     await GetMedia();
-    // }
-
-    // private async Task BrowserHasResized()
-    // {
-    //     await GetMedia();
-    //     StateHasChanged();
-    // }
-
-    // private async Task GetMedia()
-    // {
-    //     var dimensions = await BrowserResizeService.GetWindowProperties(JS);
-    //     SetPossibleContentDimensions(dimensions.Width, dimensions.Height);
-    // }
-
-    // private void SetPossibleContentDimensions(double windowWidth, double windowHeight)
-    // {
-    //     possibleContentWidth = windowWidth - (windowWidth <= _mediaMinWidth ? 0 : _sideBarWidth);
-    //     possibleContentHeight = (windowHeight - (_topRowHeight * _remToPxRatio));
-    // }
 }

@@ -3,6 +3,7 @@
 @using BlazorExperiments.UI.Services
 
 @inject IJSRuntime JS
+@implements IDisposable
 
 <div class="content">
     <h3>Current window info</h3>
@@ -19,5 +20,17 @@
     protected override async Task OnInitializedAsync()
     {
         Props = await BrowserResizeService.GetWindowProperties(JS);
+        BrowserResizeService.OnResize += BrowserHasResized;
+    }
+    
+    private async Task BrowserHasResized()
+    {
+        Props = await BrowserResizeService.GetWindowProperties(JS);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        BrowserResizeService.OnResize -= BrowserHasResized;
     }
 }
