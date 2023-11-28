@@ -17,8 +17,9 @@ public partial class Hexagon : IAsyncDisposable {
     const int MediaMinWidth = 641;
     const int SideBarWidth = 250;
 
-    const double Len = 20, Count = 50, BaseTime = 10, AddedTime = 10,
-           DieChance = .02, SparkChance = .1,
+    const int Count = 100;
+    const double Len = 20, BaseTime = 10, AddedTime = 10,
+           DieChance = .02, SparkChance = .05,
            SparkDist = 10, SparkSize = 1,
 
            BaseLight = 50, AddedLight = 10,
@@ -32,7 +33,7 @@ public partial class Hexagon : IAsyncDisposable {
     const string Color = "hsl(hue,100%,light%)";
     const double BaseRad = Math.PI * 2 / 6;
     static double _cx, _cy, _dieX, _dieY;
-    readonly List<Line> _lines = [];
+    readonly Line[] _lines = new Line[Count];
 
     DateTime _lastTime = DateTime.Now;
     int _timePassed = 0;
@@ -54,7 +55,7 @@ public partial class Hexagon : IAsyncDisposable {
             await _ctx.ScaleAsync(_devicePixelRatio, _devicePixelRatio);
             await Initialize();
 
-            _timer = new Timer(10);
+            _timer = new Timer(20);
             _timer.Elapsed += async (_, _) => await Loop();
             _timer.Enabled = true;
         }
@@ -71,7 +72,7 @@ public partial class Hexagon : IAsyncDisposable {
         await _ctx.FillRectAsync(0, 0, _width, _height);
 
         for (int i = 0; i < Count; i++)
-            _lines.Add(new());
+            _lines[i] = new();
     }
 
     private async ValueTask Loop() {
@@ -157,16 +158,17 @@ public partial class Hexagon : IAsyncDisposable {
         }
 
         public void BeginPhase() {
+            var rand = Random.Shared.NextDouble();
             X += AddedX;
             Y += AddedY;
             Time = 0;
             TargetTime = (int)(BaseTime + AddedTime * Random.Shared.NextDouble());
-            _rad += BaseRad * (Random.Shared.NextDouble() < .5 ? 1 : -1);
+            _rad += BaseRad * (rand < .5 ? 1 : -1);
             AddedX = Math.Cos(_rad);
             AddedY = Math.Sin(_rad);
 
-            if (
-                   X > _dieX
+            if (rand <= DieChance
+                || X > _dieX
                 || X < -_dieX
                 || Y > _dieY
                 || Y < -_dieY
