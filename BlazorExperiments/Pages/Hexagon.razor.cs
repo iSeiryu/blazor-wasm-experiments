@@ -18,13 +18,13 @@ public partial class Hexagon : IAsyncDisposable
 
     const double len = 20, count = 50, baseTime = 10, addedTime = 10,
            dieChance = .05, sparkChance = .1,
-           sparkDist = 10, sparkSize = 2,
+           sparkDist = 10, sparkSize = 1,
 
            baseLight = 50, addedLight = 10,
            shadowToTimePropMult = 6,
            baseLightInputMultiplier = .01, addedLightInputMultiplier = .02,
 
-           repaintAlpha = .04, hueChange = .1;
+           hueChange = .1;
 
     static double tick = 0;
 
@@ -74,12 +74,11 @@ public partial class Hexagon : IAsyncDisposable
     {
         tick++;
 
-        await using var batch = _ctx.CreateBatch();
-        await batch.GlobalCompositeOperationAsync(CompositeOperation.Source_Over);
-        await batch.ShadowBlurAsync(0);
-        await batch.FillStyleAsync($"rgba(0,0,0,{repaintAlpha})");
-        await batch.FillRectAsync(0, 0, _width, _height);
-        await batch.GlobalCompositeOperationAsync(CompositeOperation.Lighter);
+        await _ctx.GlobalCompositeOperationAsync(CompositeOperation.Source_Over);
+        await _ctx.ShadowBlurAsync(0);
+        await _ctx.FillStyleAsync("rgba(0,0,0,0.04)");
+        await _ctx.FillRectAsync(0, 0, _width, _height);
+        await _ctx.GlobalCompositeOperationAsync(CompositeOperation.Lighter);
 
         if (lines.Count < count)
             lines.Add(new());
@@ -113,11 +112,11 @@ public partial class Hexagon : IAsyncDisposable
         await batch.FillStyleAsync(newColor);
         await batch.FillRectAsync(cx + (line.x + _x) * len, cy + (line.y + _y) * len, 2, 2);
 
-        //if (Random.Shared.NextDouble() < sparkChance)
-        //    await batch.FillRectAsync(
-        //        cx + (line.x + _x) * len + Random.Shared.NextDouble() * sparkDist * (Random.Shared.NextDouble() < .5 ? 1 : -1) - sparkSize / 2,
-        //        cy + (line.y + _y) * len + Random.Shared.NextDouble() * sparkDist * (Random.Shared.NextDouble() < .5 ? 1 : -1) - sparkSize / 2,
-        //        sparkSize, sparkSize);
+        if (Random.Shared.NextDouble() < sparkChance)
+            await batch.FillRectAsync(
+                cx + (line.x + _x) * len + Random.Shared.NextDouble() * sparkDist * (Random.Shared.NextDouble() < .5 ? 1 : -1) - sparkSize / 2,
+                cy + (line.y + _y) * len + Random.Shared.NextDouble() * sparkDist * (Random.Shared.NextDouble() < .5 ? 1 : -1) - sparkSize / 2,
+                sparkSize, sparkSize);
     }
 
     public async ValueTask DisposeAsync()
