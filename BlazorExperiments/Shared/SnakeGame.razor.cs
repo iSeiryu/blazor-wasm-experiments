@@ -7,8 +7,7 @@ using Microsoft.AspNetCore.Components.Web;
 
 namespace BlazorExperiments.UI.Shared;
 
-public partial class SnakeGame : IAsyncDisposable
-{
+public partial class SnakeGame : IAsyncDisposable {
     const int CellSize = 20;
     private Context2D _context;
     private Canvas _canvas;
@@ -17,9 +16,9 @@ public partial class SnakeGame : IAsyncDisposable
 
     string _style = "";
     private double _devicePixelRatio = 1;
-    private const int _heightBuffer = 50;
-    private const int _mediaMinWidth = 641;
-    private const int _sideBarWidth = 250;
+    private const int HeightBuffer = 50;
+    private const int MediaMinWidth = 641;
+    private const int SideBarWidth = 250;
     private int _width = 400,
                 _height = 400;
 
@@ -28,24 +27,21 @@ public partial class SnakeGame : IAsyncDisposable
     private int _cellSize = 0;
     private bool _gameOver;
 
-    protected override async Task OnParametersSetAsync()
-    {
+    protected override async Task OnParametersSetAsync() {
         var windowProperties = await BrowserResizeService.GetWindowProperties(JS);
-        var sideBarWidth = windowProperties.Width > _mediaMinWidth ? _sideBarWidth : 0;
+        var sideBarWidth = windowProperties.Width > MediaMinWidth ? SideBarWidth : 0;
         var topMenuHeight = sideBarWidth == 0 ? 55 : 0;
 
         _devicePixelRatio = windowProperties.DevicePixelRatio;
         _width = (int)(windowProperties.Width - sideBarWidth - 50);
-        _height = (int)(windowProperties.Height - _heightBuffer - topMenuHeight);
-        _width = _width - (_width % CellSize);
-        _height = _height - (_height % CellSize);
+        _height = (int)(windowProperties.Height - HeightBuffer - topMenuHeight);
+        _width -= (_width % CellSize);
+        _height -= (_height % CellSize);
         _style = $"width: {_width}px; height: {_height}px;";
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
             _context = await _canvas.GetContext2DAsync();
             await _context.ScaleAsync(_devicePixelRatio, _devicePixelRatio);
             await _container.FocusAsync();
@@ -53,29 +49,24 @@ public partial class SnakeGame : IAsyncDisposable
         }
     }
 
-    private async Task InitAsync()
-    {
+    private async Task InitAsync() {
         InitalizeGame();
         await GameLoopAsync();
     }
 
-    private void InitalizeGame()
-    {
+    private void InitalizeGame() {
         _cellSize = CellSize;
         _egg = new Egg(_cellSize, _width, _height);
         _snake = new Snake(_cellSize, _width, _height);
         _gameOver = false;
     }
 
-    private async Task GameLoopAsync()
-    {
+    private async Task GameLoopAsync() {
         if (_gameOver)
             return;
 
         if (_snake.Ate(_egg))
-        {
             _egg.NewLocation();
-        }
 
         _snake.Update();
         await DrawAsync();
@@ -87,8 +78,7 @@ public partial class SnakeGame : IAsyncDisposable
         await GameLoopAsync();
     }
 
-    private async Task DrawAsync()
-    {
+    private async Task DrawAsync() {
         await using var batch = _context.CreateBatch();
 
         await ClearScreenAsync();
@@ -97,8 +87,7 @@ public partial class SnakeGame : IAsyncDisposable
         await batch.FillTextAsync("Score: " + _snake.Tail.Count, _width - 55, 10);
 
         await batch.FillStyleAsync("green");
-        foreach (var cell in _snake.Tail)
-        {
+        foreach (var cell in _snake.Tail) {
             await batch.FillRectAsync(cell.X, cell.Y, _cellSize, _cellSize);
             await batch.StrokeStyleAsync("white");
             await batch.StrokeRectAsync(cell.X, cell.Y, _cellSize, _cellSize);
@@ -113,8 +102,7 @@ public partial class SnakeGame : IAsyncDisposable
         await batch.FillRectAsync(_egg.X, _egg.Y, _cellSize, _cellSize);
     }
 
-    private async Task HandleInput(KeyboardEventArgs e)
-    {
+    private async Task HandleInput(KeyboardEventArgs e) {
         if (_gameOver)
             await InitAsync();
 
@@ -128,16 +116,14 @@ public partial class SnakeGame : IAsyncDisposable
             _snake.SetDirection(SnakeDirection.Right);
     }
 
-    private async Task HandleTouchStart(TouchEventArgs e)
-    {
+    private async Task HandleTouchStart(TouchEventArgs e) {
         if (_gameOver)
             await InitAsync();
 
         _previousTouch = e?.Touches.FirstOrDefault();
     }
 
-    private void HandleTouchMove(TouchEventArgs e)
-    {
+    private void HandleTouchMove(TouchEventArgs e) {
         if (_previousTouch == null)
             return;
 
@@ -149,27 +135,23 @@ public partial class SnakeGame : IAsyncDisposable
             return;
 
         // most significant
-        if (Math.Abs(xDiff) > Math.Abs(yDiff))
-        {
+        if (Math.Abs(xDiff) > Math.Abs(yDiff)) {
             _snake.SetDirection(xDiff > 0 ? SnakeDirection.Left : SnakeDirection.Right);
         }
-        else
-        {
+        else {
             _snake.SetDirection(yDiff > 0 ? SnakeDirection.Up : SnakeDirection.Down);
         }
 
         _previousTouch = e.Touches[^1];
     }
 
-    private async Task ClearScreenAsync()
-    {
+    private async Task ClearScreenAsync() {
         await _context.ClearRectAsync(0, 0, _width, _height);
         await _context.FillStyleAsync("black");
         await _context.FillRectAsync(0, 0, _width, _height);
     }
 
-    private async Task GameOver()
-    {
+    private async Task GameOver() {
         _gameOver = true;
 
         await _context.FillStyleAsync("red");
@@ -177,9 +159,9 @@ public partial class SnakeGame : IAsyncDisposable
         await _context.FillTextAsync("Game Over", _width / 4, _height / 2);
     }
 
-    public async ValueTask DisposeAsync()
-    {
+    public async ValueTask DisposeAsync() {
         _gameOver = true;
         await _context.DisposeAsync();
+        GC.SuppressFinalize(this);
     }
 }

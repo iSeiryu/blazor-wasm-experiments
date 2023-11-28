@@ -6,56 +6,47 @@ using Timer = System.Timers.Timer;
 
 namespace BlazorExperiments.UI.Shared;
 
-public partial class TetrisGame : IAsyncDisposable
-{
+public partial class TetrisGame : IAsyncDisposable {
     private Context2D _context;
     private static Timer _timer;
-    private double x, y = 50;
+    private double _x, _y = 50;
     protected Canvas _canvas;
     private ElementReference _container;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
             _context = await _canvas.GetContext2DAsync();
 
             await _context.FontAsync("48px serif");
-            await _context.StrokeTextAsync("current y: " + y, 100, 50);
+            await _context.StrokeTextAsync("current y: " + _y, 100, 50);
             await _container.FocusAsync();
 
             _timer = new Timer(10);
-            _timer.Elapsed += async (_, _) => { await DrawAsync(); };
+            _timer.Elapsed += async (_, _) => await DrawAsync();
             _timer.Enabled = true;
         }
     }
 
-    public void Move(KeyboardEventArgs e)
-    {
-        if (e.Code == "ArrowDown")
-        {
-            y += 10;
+    public void Move(KeyboardEventArgs e) {
+        if (e.Code == "ArrowDown") {
+            _y += 10;
         }
-        else if (e.Code == "ArrowUp")
-        {
-            y -= 10;
+        else if (e.Code == "ArrowUp") {
+            _y -= 10;
         }
-        else if (e.Code == "ArrowLeft")
-        {
-            x -= 10;
+        else if (e.Code == "ArrowLeft") {
+            _x -= 10;
         }
-        else if (e.Code == "ArrowRight")
-        {
-            x += 10;
+        else if (e.Code == "ArrowRight") {
+            _x += 10;
         }
     }
 
-    private async Task DrawAsync()
-    {
-        await using var batch = await _context.CreateBatchAsync();
+    private async ValueTask DrawAsync() {
+        await using var batch = _context.CreateBatch();
 
         await batch.ClearRectAsync(0, 0, 600, 400);
-        await batch.StrokeTextAsync(DateTime.Now.ToString("mm:ss:FFF"), x, y);
+        await batch.StrokeTextAsync(DateTime.Now.ToString("mm:ss:FFF"), _x, _y);
         await batch.StrokeRectAsync(75, 140, 150, 110);
         await batch.FillRectAsync(130, 190, 40, 60);
 
@@ -67,9 +58,9 @@ public partial class TetrisGame : IAsyncDisposable
         await batch.StrokeAsync();
     }
 
-    public async ValueTask DisposeAsync()
-    {
+    public async ValueTask DisposeAsync() {
         _timer.Dispose();
         await _context.DisposeAsync();
+        GC.SuppressFinalize(this);
     }
 }

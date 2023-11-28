@@ -1,7 +1,6 @@
 ﻿namespace BlazorExperiments.UI.Models.SnakeGame;
 
-public enum SnakeDirection
-{
+public enum SnakeDirection {
     Up,
     Down,
     Left,

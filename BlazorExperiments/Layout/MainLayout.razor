@@ -2,7 +2,6 @@
 @using BlazorExperiments.UI.Services;
 @inherits LayoutComponentBase
 @implements IDisposable
-@inject IJSRuntime JS
 
 <div class="page">
     <div class="sidebar">
@@ -17,15 +16,6 @@
 </div>
 
 @code {
-    private double possibleContentWidth { get; set; } = 0;
-    private double possibleContentHeight { get; set; } = 0;
-    private const int _remToPxRatio = 16;
-    private const int _mediaMinWidth = 641;
-    private const int _sideBarWidth = 250;
-    private const double _topRowHeight = 3.5;
-    private string _topRowHeightClass;
-    private string _sideBarWidthClass;
-
     public void Dispose()
     {
         //BrowserResizeService.OnResize -= BrowserHasResized;

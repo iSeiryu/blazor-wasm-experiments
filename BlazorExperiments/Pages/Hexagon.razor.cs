@@ -5,81 +5,74 @@ using Timer = System.Timers.Timer;
 
 namespace BlazorExperiments.UI.Pages;
 
-public partial class Hexagon : IAsyncDisposable
-{
+public partial class Hexagon : IAsyncDisposable {
     Canvas _canvas;
     Context2D _ctx;
+    Timer _timer;
 
     double _width = 400, _height = 400;
     string _style = "";
     double _devicePixelRatio = 1;
-    const int _heightBuffer = 50;
-    const int _mediaMinWidth = 641;
-    const int _sideBarWidth = 250;
+    const int HeightBuffer = 50;
+    const int MediaMinWidth = 641;
+    const int SideBarWidth = 250;
 
-    const double len = 20, count = 50, baseTime = 10, addedTime = 10,
-           dieChance = .05, sparkChance = .1,
-           sparkDist = 10, sparkSize = 1,
+    const double Len = 20, Count = 50, BaseTime = 10, AddedTime = 10,
+           DieChance = .02, SparkChance = .1,
+           SparkDist = 10, SparkSize = 1,
 
-           baseLight = 50, addedLight = 10,
-           shadowToTimePropMult = 6,
-           baseLightInputMultiplier = .01, addedLightInputMultiplier = .02,
+           BaseLight = 50, AddedLight = 10,
+           ShadowToTimePropMult = 6,
+           BaseLightInputMultiplier = .01, AddedLightInputMultiplier = .02,
 
-           hueChange = .1;
+           HueChange = .1;
 
-    static double tick = 0;
+    static double _tick = 0;
 
-    const string _color = "hsl(hue,100%,light%)";
-    const double baseRad = Math.PI * 2 / 6;
-    static double cx, cy, dieX, dieY;
-    readonly List<Line> lines = new();
+    const string Color = "hsl(hue,100%,light%)";
+    const double BaseRad = Math.PI * 2 / 6;
+    static double _cx, _cy, _dieX, _dieY;
+    readonly List<Line> _lines = [];
 
-    DateTime lastTime = DateTime.Now;
-    int timePassed = 0;
+    DateTime _lastTime = DateTime.Now;
+    int _timePassed = 0;
 
-    Timer _timer;
-
-    protected override async Task OnParametersSetAsync()
-    {
+    protected override async Task OnParametersSetAsync() {
         var windowProperties = await BrowserResizeService.GetWindowProperties(JS);
-        var sideBarWidth = windowProperties.Width > _mediaMinWidth ? _sideBarWidth : 0;
+        var sideBarWidth = windowProperties.Width > MediaMinWidth ? SideBarWidth : 0;
         var topMenuHeight = sideBarWidth == 0 ? 55 : 0;
 
         _devicePixelRatio = windowProperties.DevicePixelRatio;
         _width = (int)(windowProperties.Width - sideBarWidth - 50);
-        _height = (int)(windowProperties.Height - _heightBuffer - topMenuHeight);
+        _height = (int)(windowProperties.Height - HeightBuffer - topMenuHeight);
         _style = $"width: {_width}px; height: {_height}px;";
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
             _ctx = await _canvas.GetContext2DAsync();
             await _ctx.ScaleAsync(_devicePixelRatio, _devicePixelRatio);
             await Initialize();
 
             _timer = new Timer(10);
-            _timer.Elapsed += async (_, _) => { await Loop(); };
+            _timer.Elapsed += async (_, _) => await Loop();
             _timer.Enabled = true;
         }
     }
 
-    public async ValueTask Initialize()
-    {
-        cx = _width / 2;
-        cy = _height / 2;
+    public async ValueTask Initialize() {
+        _cx = _width / 2;
+        _cy = _height / 2;
 
-        dieX = _width / 2 / len;
-        dieY = _height / 2 / len;
+        _dieX = _width / 2 / Len;
+        _dieY = _height / 2 / Len;
 
         await _ctx.FillStyleAsync("black");
         await _ctx.FillRectAsync(0, 0, _width, _height);
     }
 
-    private async ValueTask Loop()
-    {
-        tick++;
+    private async ValueTask Loop() {
+        _tick++;
 
         await _ctx.GlobalCompositeOperationAsync(CompositeOperation.Source_Over);
         await _ctx.ShadowBlurAsync(0);
@@ -87,102 +80,96 @@ public partial class Hexagon : IAsyncDisposable
         await _ctx.FillRectAsync(0, 0, _width, _height);
         await _ctx.GlobalCompositeOperationAsync(CompositeOperation.Lighter);
 
-        if (lines.Count < count)
-            lines.Add(new());
+        if (_lines.Count < Count)
+            _lines.Add(new());
 
-        foreach (var line in lines)
+        foreach (var line in _lines)
             await Step(line);
 
         await DrawFps();
     }
 
-    async ValueTask DrawFps()
-    {
-        if (timePassed > 70)
-        {
-            timePassed = 0;
+    async ValueTask DrawFps() {
+        if (_timePassed > 70) {
+            _timePassed = 0;
             await _ctx.ClearRectAsync(0, 0, 120, 30);
             await _ctx.FontAsync("bold 20px Arial");
             await _ctx.FillTextAsync(
-                Math.Round((1000 / (DateTime.Now - lastTime).TotalMilliseconds) * 100) / 100 + " FPS",
+                Math.Round((1000 / (DateTime.Now - _lastTime).TotalMilliseconds) * 100) / 100 + " FPS",
                 10,
                 20
             );
         }
-        timePassed++;
-        lastTime = DateTime.Now;
+        _timePassed++;
+        _lastTime = DateTime.Now;
     }
 
-    async ValueTask Step(Line line)
-    {
-        line.time++;
-        line.cumulativeTime++;
+    async ValueTask Step(Line line) {
+        line.Time++;
+        line.CumulativeTime++;
 
-        if (line.time >= line.targetTime)
+        if (line.Time >= line.TargetTime)
             line.BeginPhase();
 
-        double prop = line.time / line.targetTime;
+        double prop = line.Time / line.TargetTime;
         double wave = Math.Sin(prop * Math.PI / 2);
-        double _x = line.addedX * wave;
-        double _y = line.addedY * wave;
+        double x = line.AddedX * wave;
+        double y = line.AddedY * wave;
 
-        var newColor = line.color.Replace("light", (baseLight + addedLight * Math.Sin(line.cumulativeTime * line.lightInputMultiplier)).ToString());
+        var newColor = line.Color.Replace("light", (BaseLight + AddedLight * Math.Sin(line.CumulativeTime * line.LightInputMultiplier)).ToString());
         await using var batch = _ctx.CreateBatch();
-        await batch.ShadowBlurAsync(prop * shadowToTimePropMult);
+        await batch.ShadowBlurAsync(prop * ShadowToTimePropMult);
         await batch.ShadowColorAsync(newColor);
         await batch.FillStyleAsync(newColor);
-        await batch.FillRectAsync(cx + (line.x + _x) * len, cy + (line.y + _y) * len, 2, 2);
+        await batch.FillRectAsync(_cx + (line.X + x) * Len, _cy + (line.Y + y) * Len, 2, 2);
 
-        if (Random.Shared.NextDouble() < sparkChance)
+        if (Random.Shared.NextDouble() < SparkChance)
             await batch.FillRectAsync(
-                cx + (line.x + _x) * len + Random.Shared.NextDouble() * sparkDist * (Random.Shared.NextDouble() < .5 ? 1 : -1) - sparkSize / 2,
-                cy + (line.y + _y) * len + Random.Shared.NextDouble() * sparkDist * (Random.Shared.NextDouble() < .5 ? 1 : -1) - sparkSize / 2,
-                sparkSize, sparkSize);
+                _cx + (line.X + x) * Len + Random.Shared.NextDouble() * SparkDist * (Random.Shared.NextDouble() < .5 ? 1 : -1) - SparkSize / 2,
+                _cy + (line.Y + y) * Len + Random.Shared.NextDouble() * SparkDist * (Random.Shared.NextDouble() < .5 ? 1 : -1) - SparkSize / 2,
+                SparkSize, SparkSize);
     }
 
-    public async ValueTask DisposeAsync()
-    {
+    public async ValueTask DisposeAsync() {
         _timer.Dispose();
         await _ctx.DisposeAsync();
+        GC.SuppressFinalize(this);
     }
 
-    public class Line
-    {
-        public int time;
-        public int cumulativeTime;
-        public string color = "";
-        public double x, y, addedX, addedY, rad, targetTime, lightInputMultiplier;
+    public sealed class Line {
+        public int Time;
+        public int CumulativeTime;
+        public string Color = "";
+        public double X, Y, AddedX, AddedY, TargetTime, LightInputMultiplier;
+        double _rad;
 
-        public Line()
-        {
+        public Line() {
             Reset();
         }
 
-        public void Reset()
-        {
-            x = y = addedX = addedY = rad = 0;
-            lightInputMultiplier = baseLightInputMultiplier + addedLightInputMultiplier * Random.Shared.NextDouble();
-            color = _color.Replace("hue", (tick * hueChange).ToString());
-            cumulativeTime = 0;
+        public void Reset() {
+            X = Y = AddedX = AddedY = _rad = 0;
+            LightInputMultiplier = BaseLightInputMultiplier + AddedLightInputMultiplier * Random.Shared.NextDouble();
+            Color = Hexagon.Color.Replace("hue", (_tick * HueChange).ToString());
+            CumulativeTime = 0;
             BeginPhase();
         }
 
-        public void BeginPhase()
-        {
-            x += addedX;
-            y += addedY;
-            time = 0;
-            targetTime = (int)(baseTime + addedTime * Random.Shared.NextDouble());
-            rad += baseRad * (Random.Shared.NextDouble() < .5 ? 1 : -1);
-            addedX = Math.Cos(rad);
-            addedY = Math.Sin(rad);
+        public void BeginPhase() {
+            X += AddedX;
+            Y += AddedY;
+            Time = 0;
+            TargetTime = (int)(BaseTime + AddedTime * Random.Shared.NextDouble());
+            _rad += BaseRad * (Random.Shared.NextDouble() < .5 ? 1 : -1);
+            AddedX = Math.Cos(_rad);
+            AddedY = Math.Sin(_rad);
 
             if (
-                Random.Shared.NextDouble() < dieChance
-                || x > dieX
-                || x < -dieX
-                || y > dieY
-                || y < -dieY
+                Random.Shared.NextDouble() < DieChance
+                || X > _dieX
+                || X < -_dieX
+                || Y > _dieY
+                || Y < -_dieY
             )
                 Reset();
         }
