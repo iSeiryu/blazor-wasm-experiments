@@ -69,6 +69,9 @@ public partial class Hexagon : IAsyncDisposable {
 
         await _ctx.FillStyleAsync("black");
         await _ctx.FillRectAsync(0, 0, _width, _height);
+
+        for (int i = 0; i < Count; i++)
+            _lines.Add(new());
     }
 
     private async ValueTask Loop() {
@@ -80,31 +83,27 @@ public partial class Hexagon : IAsyncDisposable {
         await _ctx.FillRectAsync(0, 0, _width, _height);
         await _ctx.GlobalCompositeOperationAsync(CompositeOperation.Lighter);
 
-        if (_lines.Count < Count)
-            _lines.Add(new());
+        await using var batch = _ctx.CreateBatch();
 
         foreach (var line in _lines)
-            await Step(line);
+            await Step(line, batch);
 
-        await DrawFps();
+        await DrawFps(batch);
     }
 
-    async ValueTask DrawFps() {
-        if (_timePassed > 70) {
+    async ValueTask DrawFps(Batch2D batch) {
+        if (_timePassed > 50) {
             _timePassed = 0;
-            await _ctx.ClearRectAsync(0, 0, 120, 30);
-            await _ctx.FontAsync("bold 20px Arial");
-            await _ctx.FillTextAsync(
-                Math.Round((1000 / (DateTime.Now - _lastTime).TotalMilliseconds) * 100) / 100 + " FPS",
-                10,
-                20
-            );
+            var fps = Math.Round(1000 / (DateTime.Now - _lastTime).TotalMilliseconds * 100) / 100;
+            await batch.ClearRectAsync(0, 0, 120, 30);
+            await batch.FontAsync("bold 20px Arial");
+            await batch.FillTextAsync(fps + " FPS", 10, 20);
         }
         _timePassed++;
         _lastTime = DateTime.Now;
     }
 
-    async ValueTask Step(Line line) {
+    async ValueTask Step(Line line, Batch2D batch) {
         line.Time++;
         line.CumulativeTime++;
 
@@ -117,23 +116,25 @@ public partial class Hexagon : IAsyncDisposable {
         double y = line.AddedY * wave;
 
         var newColor = line.Color.Replace("light", (BaseLight + AddedLight * Math.Sin(line.CumulativeTime * line.LightInputMultiplier)).ToString());
-        await using var batch = _ctx.CreateBatch();
+
         await batch.ShadowBlurAsync(prop * ShadowToTimePropMult);
         await batch.ShadowColorAsync(newColor);
         await batch.FillStyleAsync(newColor);
         await batch.FillRectAsync(_cx + (line.X + x) * Len, _cy + (line.Y + y) * Len, 2, 2);
 
-        if (Random.Shared.NextDouble() < SparkChance)
+        if (Random.Shared.NextDouble() < SparkChance) {
+            var rand = Random.Shared.NextDouble() * SparkDist * (Random.Shared.NextDouble() < .5 ? 1 : -1) - SparkSize / 2;
             await batch.FillRectAsync(
-                _cx + (line.X + x) * Len + Random.Shared.NextDouble() * SparkDist * (Random.Shared.NextDouble() < .5 ? 1 : -1) - SparkSize / 2,
-                _cy + (line.Y + y) * Len + Random.Shared.NextDouble() * SparkDist * (Random.Shared.NextDouble() < .5 ? 1 : -1) - SparkSize / 2,
-                SparkSize, SparkSize);
+                _cx + (line.X + x) * Len + rand,
+                _cy + (line.Y + y) * Len + rand,
+                SparkSize,
+                SparkSize);
+        }
     }
 
     public async ValueTask DisposeAsync() {
         _timer.Dispose();
         await _ctx.DisposeAsync();
-        GC.SuppressFinalize(this);
     }
 
     public sealed class Line {
@@ -165,8 +166,7 @@ public partial class Hexagon : IAsyncDisposable {
             AddedY = Math.Sin(_rad);
 
             if (
-                Random.Shared.NextDouble() < DieChance
-                || X > _dieX
+                   X > _dieX
                 || X < -_dieX
                 || Y > _dieY
                 || Y < -_dieY
