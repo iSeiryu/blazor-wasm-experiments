@@ -1,3 +1,4 @@
+using BlazorExperiments.UI.Models;
 using BlazorExperiments.UI.Services;
 using Excubo.Blazor.Canvas;
 using Excubo.Blazor.Canvas.Contexts;
@@ -37,9 +38,14 @@ public partial class Hexagon : IAsyncDisposable {
 
     DateTime _lastTime = DateTime.Now;
     int _timePassed = 0;
+    bool _previousDrawComplete = true;
 
     protected override async Task OnParametersSetAsync() {
         var windowProperties = await BrowserResizeService.GetWindowProperties(JS);
+        SetCanvasSize(windowProperties);
+    }
+
+    void SetCanvasSize(WindowProperties windowProperties) {
         var sideBarWidth = windowProperties.Width > MediaMinWidth ? SideBarWidth : 0;
         var topMenuHeight = sideBarWidth == 0 ? 55 : 0;
 
@@ -55,7 +61,7 @@ public partial class Hexagon : IAsyncDisposable {
             await _ctx.ScaleAsync(_devicePixelRatio, _devicePixelRatio);
             await Initialize();
 
-            _timer = new Timer(20);
+            _timer = new Timer(16);
             _timer.Elapsed += async (_, _) => await Loop();
             _timer.Enabled = true;
         }
@@ -77,31 +83,35 @@ public partial class Hexagon : IAsyncDisposable {
 
     private async ValueTask Loop() {
         _tick++;
+        if (!_previousDrawComplete)
+            return;
 
-        await _ctx.GlobalCompositeOperationAsync(CompositeOperation.Source_Over);
-        await _ctx.ShadowBlurAsync(0);
-        await _ctx.FillStyleAsync("rgba(0,0,0,0.04)");
-        await _ctx.FillRectAsync(0, 0, _width, _height);
-        await _ctx.GlobalCompositeOperationAsync(CompositeOperation.Lighter);
-
+        _previousDrawComplete = false;
         await using var batch = _ctx.CreateBatch();
+        await batch.GlobalCompositeOperationAsync(CompositeOperation.Source_Over);
+        await batch.ShadowBlurAsync(0);
+        await batch.FillStyleAsync("rgba(0,0,0,0.04)");
+        await batch.FillRectAsync(0, 0, _width, _height);
+        await batch.GlobalCompositeOperationAsync(CompositeOperation.Lighter);
 
         foreach (var line in _lines)
             await Step(line, batch);
 
         await DrawFps(batch);
+        _previousDrawComplete = true;
     }
 
     async ValueTask DrawFps(Batch2D batch) {
         if (_timePassed > 50) {
+            var fps = 1 / (DateTime.Now - _lastTime).TotalSeconds;
             _timePassed = 0;
-            var fps = Math.Round(1000 / (DateTime.Now - _lastTime).TotalMilliseconds * 100) / 100;
+
             await batch.ClearRectAsync(0, 0, 120, 30);
             await batch.FontAsync("bold 20px Arial");
-            await batch.FillTextAsync(fps + " FPS", 10, 20);
+            await batch.FillTextAsync($"{fps:F} FPS", 10, 20);
         }
-        _timePassed++;
         _lastTime = DateTime.Now;
+        _timePassed++;
     }
 
     async ValueTask Step(Line line, Batch2D batch) {
