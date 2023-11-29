@@ -1,4 +1,3 @@
-using BlazorExperiments.UI.Models;
 using BlazorExperiments.UI.Services;
 using Excubo.Blazor.Canvas;
 using Excubo.Blazor.Canvas.Contexts;
@@ -18,9 +17,11 @@ public partial class Hexagon : IAsyncDisposable {
     const int MediaMinWidth = 641;
     const int SideBarWidth = 250;
 
-    const int Count = 100;
-    const double Len = 20, BaseTime = 10, AddedTime = 10,
-           DieChance = .02, SparkChance = .05,
+    int Count { get; set; } = 100;
+    double Len { get; set; } = 20;
+
+    const double BaseTime = 10, AddedTime = 10,
+           DieChance = .02, SparkChance = .02,
            SparkDist = 10, SparkSize = 1,
 
            BaseLight = 50, AddedLight = 10,
@@ -31,21 +32,15 @@ public partial class Hexagon : IAsyncDisposable {
 
     static double _tick = 0;
 
-    const string Color = "hsl(hue,100%,light%)";
     const double BaseRad = Math.PI * 2 / 6;
     static double _cx, _cy, _dieX, _dieY;
-    readonly Line[] _lines = new Line[Count];
+    readonly List<Line> _lines = [];
 
     DateTime _lastTime = DateTime.Now;
     int _timePassed = 0;
-    bool _previousDrawComplete = true;
 
     protected override async Task OnParametersSetAsync() {
         var windowProperties = await BrowserResizeService.GetWindowProperties(JS);
-        SetCanvasSize(windowProperties);
-    }
-
-    void SetCanvasSize(WindowProperties windowProperties) {
         var sideBarWidth = windowProperties.Width > MediaMinWidth ? SideBarWidth : 0;
         var topMenuHeight = sideBarWidth == 0 ? 55 : 0;
 
@@ -57,36 +52,30 @@ public partial class Hexagon : IAsyncDisposable {
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            _ctx = await _canvas.GetContext2DAsync();
+            _ctx = await _canvas.GetContext2DAsync(alpha: false);
             await _ctx.ScaleAsync(_devicePixelRatio, _devicePixelRatio);
-            await Initialize();
+            Initialize();
 
-            _timer = new Timer(16);
+            _timer = new Timer(1_000 / 60);
             _timer.Elapsed += async (_, _) => await Loop();
             _timer.Enabled = true;
         }
     }
 
-    public async ValueTask Initialize() {
+    public void Initialize() {
         _cx = _width / 2;
         _cy = _height / 2;
 
         _dieX = _width / 2 / Len;
         _dieY = _height / 2 / Len;
 
-        await _ctx.FillStyleAsync("black");
-        await _ctx.FillRectAsync(0, 0, _width, _height);
-
+        _lines.Clear();
         for (int i = 0; i < Count; i++)
-            _lines[i] = new();
+            _lines.Add(new());
     }
 
     private async ValueTask Loop() {
         _tick++;
-        if (!_previousDrawComplete)
-            return;
-
-        _previousDrawComplete = false;
         await using var batch = _ctx.CreateBatch();
         await batch.GlobalCompositeOperationAsync(CompositeOperation.Source_Over);
         await batch.ShadowBlurAsync(0);
@@ -98,7 +87,6 @@ public partial class Hexagon : IAsyncDisposable {
             await Step(line, batch);
 
         await DrawFps(batch);
-        _previousDrawComplete = true;
     }
 
     async ValueTask DrawFps(Batch2D batch) {
@@ -126,7 +114,8 @@ public partial class Hexagon : IAsyncDisposable {
         double x = line.AddedX * wave;
         double y = line.AddedY * wave;
 
-        var newColor = line.Color.Replace("light", (BaseLight + AddedLight * Math.Sin(line.CumulativeTime * line.LightInputMultiplier)).ToString());
+        var light = BaseLight + AddedLight * Math.Sin(line.CumulativeTime * line.LightInputMultiplier);
+        var newColor = $"hsl({line.Hue},100%,{light}%)";
 
         await batch.ShadowBlurAsync(prop * ShadowToTimePropMult);
         await batch.ShadowColorAsync(newColor);
@@ -151,7 +140,7 @@ public partial class Hexagon : IAsyncDisposable {
     public sealed class Line {
         public int Time;
         public int CumulativeTime;
-        public string Color = "";
+        public double Hue;
         public double X, Y, AddedX, AddedY, TargetTime, LightInputMultiplier;
         double _rad;
 
@@ -162,7 +151,7 @@ public partial class Hexagon : IAsyncDisposable {
         public void Reset() {
             X = Y = AddedX = AddedY = _rad = 0;
             LightInputMultiplier = BaseLightInputMultiplier + AddedLightInputMultiplier * Random.Shared.NextDouble();
-            Color = Hexagon.Color.Replace("hue", (_tick * HueChange).ToString());
+            Hue = _tick * HueChange;
             CumulativeTime = 0;
             BeginPhase();
         }
