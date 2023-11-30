@@ -1,15 +1,11 @@
 ﻿@inject IJSRuntime JS
 
-<div id="snake_container"
-     tabindex="0"
-     @onkeydown="HandleInput"
-     @ontouchstart="HandleTouchStart"
-     @ontouchmove="HandleTouchMove"
-     style="width: @(_width + 4)px; height: @(_height + 4)px !important; display: grid; align-items: center; justify-content: center;"
-     @ref="_container">
-    <Excubo.Blazor.Canvas.Canvas id="snake_canvas"
-                                 width=@(_width * _devicePixelRatio)
-                                 height=@(_height * _devicePixelRatio)
-                                 style=@_style
-                                 @ref="_canvas"></Excubo.Blazor.Canvas.Canvas>
-</div>
+<CanvasComponent Id="snake"
+                 Initialize="InitalizeGame"
+                 LoopAsync="GameLoopAsync"
+                 HandleKeyDown="HandleInput"
+                 HandleTouchStart="HandleTouchStart"
+                 HandleTouchMove="HandleTouchMove"
+                 CellSize="20"
+                 @ref="_canvas">
+</CanvasComponent>

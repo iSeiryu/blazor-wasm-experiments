@@ -1,14 +1,15 @@
 ﻿@page "/hexagon"
 @using Excubo.Blazor.Canvas
 @using Excubo.Blazor.Canvas.Contexts
+@using BlazorExperiments.UI.Shared
 
 @inject IJSRuntime JS
 
-<Excubo.Blazor.Canvas.Canvas id="hexagon_canvas"
-                             width=@(_width * _devicePixelRatio)
-                             height=@(_height * _devicePixelRatio)
-                             style=@_style
-                             @ref="_canvas"></Excubo.Blazor.Canvas.Canvas>
+<CanvasComponent Id="tetris"
+                 Initialize="Initialize"
+                 LoopAsync="Loop"
+                 @ref="_canvas">
+</CanvasComponent>
 
 <div class="d-grid">
     <div class="row">

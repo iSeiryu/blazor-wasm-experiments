@@ -1,3 +1,6 @@
-﻿<div tabindex="0" @onkeydown="Move" @ref="_container">
-    <Excubo.Blazor.Canvas.Canvas Width="600" Height="400" @ref="_canvas"></Excubo.Blazor.Canvas.Canvas>
-</div>
+﻿<CanvasComponent Id="tetris"
+                 InitializeAsync="InitializeAsync"
+                 LoopAsync="DrawAsync"
+                 HandleKeyDown="Move"
+                 @ref="_canvas">
+</CanvasComponent>

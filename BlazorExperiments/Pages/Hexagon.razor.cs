@@ -1,21 +1,12 @@
-using BlazorExperiments.UI.Services;
+using System.Timers;
+using BlazorExperiments.UI.Shared;
 using Excubo.Blazor.Canvas;
 using Excubo.Blazor.Canvas.Contexts;
-using Timer = System.Timers.Timer;
 
 namespace BlazorExperiments.UI.Pages;
 
-public partial class Hexagon : IAsyncDisposable {
-    Canvas _canvas;
-    Context2D _ctx;
-    Timer _timer;
-
-    double _width = 400, _height = 400;
-    string _style = "";
-    double _devicePixelRatio = 1;
-    const int HeightBuffer = 50;
-    const int MediaMinWidth = 641;
-    const int SideBarWidth = 250;
+public partial class Hexagon {
+    CanvasComponent _canvas = null!;
 
     int Count { get; set; } = 100;
     double Len { get; set; } = 20;
@@ -39,48 +30,25 @@ public partial class Hexagon : IAsyncDisposable {
     DateTime _lastTime = DateTime.Now;
     int _timePassed = 0;
 
-    protected override async Task OnParametersSetAsync() {
-        var windowProperties = await BrowserResizeService.GetWindowProperties(JS);
-        var sideBarWidth = windowProperties.Width > MediaMinWidth ? SideBarWidth : 0;
-        var topMenuHeight = sideBarWidth == 0 ? 55 : 0;
-
-        _devicePixelRatio = windowProperties.DevicePixelRatio;
-        _width = (int)(windowProperties.Width - sideBarWidth - 50);
-        _height = (int)(windowProperties.Height - HeightBuffer - topMenuHeight);
-        _style = $"width: {_width}px; height: {_height}px;";
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender) {
-            _ctx = await _canvas.GetContext2DAsync(alpha: false);
-            await _ctx.ScaleAsync(_devicePixelRatio, _devicePixelRatio);
-            Initialize();
-
-            _timer = new Timer(1_000 / 60);
-            _timer.Elapsed += async (_, _) => await Loop();
-            _timer.Enabled = true;
-        }
-    }
-
     public void Initialize() {
-        _cx = _width / 2;
-        _cy = _height / 2;
+        _cx = _canvas.Width / 2;
+        _cy = _canvas.Height / 2;
 
-        _dieX = _width / 2 / Len;
-        _dieY = _height / 2 / Len;
+        _dieX = _canvas.Width / 2 / Len;
+        _dieY = _canvas.Height / 2 / Len;
 
         _lines.Clear();
         for (int i = 0; i < Count; i++)
             _lines.Add(new());
     }
 
-    private async ValueTask Loop() {
+    private async ValueTask Loop(ElapsedEventArgs elapsedEvent) {
         _tick++;
-        await using var batch = _ctx.CreateBatch();
+        await using var batch = _canvas.Context.CreateBatch();
         await batch.GlobalCompositeOperationAsync(CompositeOperation.Source_Over);
         await batch.ShadowBlurAsync(0);
         await batch.FillStyleAsync("rgba(0,0,0,0.04)");
-        await batch.FillRectAsync(0, 0, _width, _height);
+        await batch.FillRectAsync(0, 0, _canvas.Width, _canvas.Height);
         await batch.GlobalCompositeOperationAsync(CompositeOperation.Lighter);
 
         foreach (var line in _lines)
@@ -130,11 +98,6 @@ public partial class Hexagon : IAsyncDisposable {
                 SparkSize,
                 SparkSize);
         }
-    }
-
-    public async ValueTask DisposeAsync() {
-        _timer.Dispose();
-        await _ctx.DisposeAsync();
     }
 
     public sealed class Line {

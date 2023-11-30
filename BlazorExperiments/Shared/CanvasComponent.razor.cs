@@ -1,44 +1,51 @@
 using BlazorExperiments.UI.Services;
 using Excubo.Blazor.Canvas;
-using Excubo.Blazor.Canvas.Contexts;
 using Microsoft.AspNetCore.Components;
 using Timer = System.Timers.Timer;
 
 namespace BlazorExperiments.UI.Shared;
-public partial class CanvasComponent {
-    private Context2D _context;
-    private static Timer _timer;
-    protected Canvas _canvas;
-    private ElementReference _container;
+public partial class CanvasComponent : IAsyncDisposable {
+    Timer _timer = null!;
 
-    double _width = 400, _height = 400;
     string _style = "";
     double _devicePixelRatio = 1;
-    const int HeightBuffer = 50;
+    const int Margin = 50;
     const int MediaMinWidth = 641;
     const int SideBarWidth = 250;
 
     protected override async Task OnParametersSetAsync() {
         var windowProperties = await BrowserResizeService.GetWindowProperties(JS);
         var sideBarWidth = windowProperties.Width > MediaMinWidth ? SideBarWidth : 0;
-        var topMenuHeight = sideBarWidth == 0 ? 55 : 0;
+        var topMenuHeight = sideBarWidth == 0 ? Margin : 0;
 
         _devicePixelRatio = windowProperties.DevicePixelRatio;
-        _width = (int)(windowProperties.Width - sideBarWidth - 50);
-        _height = (int)(windowProperties.Height - HeightBuffer - topMenuHeight);
-        _style = $"width: {_width}px; height: {_height}px;";
+        Width = (int)(windowProperties.Width - sideBarWidth - Margin);
+        Height = (int)(windowProperties.Height - Margin - topMenuHeight);
+        Width -= Width % CellSize;
+        Height -= Height % CellSize;
+        _style = $"width: {Width}px; height: {Height}px;";
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            _context = await _canvas.GetContext2DAsync();
-            await _context.ScaleAsync(_devicePixelRatio, _devicePixelRatio);
-            await _container.FocusAsync();
-            await InitializeAsync();
+            Context = await Canvas.GetContext2DAsync(alpha: Alpha);
+            await Context.ScaleAsync(_devicePixelRatio, _devicePixelRatio);
+            await Container.FocusAsync();
 
-            _timer = new Timer(10);
-            _timer.Elapsed += async (_, _) => await LoopAsync();
+            if (Initialize != null)
+                Initialize();
+            else
+                await InitializeAsync();
+
+            var interval = 1_000 / 60; // 60 fps
+            _timer = new Timer(interval);
+            _timer.Elapsed += async (_, elapsedEvent) => await LoopAsync(elapsedEvent);
             _timer.Enabled = true;
         }
+    }
+
+    public async ValueTask DisposeAsync() {
+        _timer?.Dispose();
+        await Context.DisposeAsync();
     }
 }

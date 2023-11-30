@@ -1,23 +1,52 @@
-﻿@inject IJSRuntime JS
+﻿@using Excubo.Blazor.Canvas
+@using Excubo.Blazor.Canvas.Contexts
+@using System.Timers
+@inject IJSRuntime JS
 
-<div id="canvas_container"
+<div id="canvas-container"
      tabindex="0"
-     style="width: @(_width + 4)px; height: @(_height + 4)px !important; display: grid; align-items: center; justify-content: center;"
-     @ref="_container">
-    <Excubo.Blazor.Canvas.Canvas id="@Id"
-                                 width=@(_width * _devicePixelRatio)
-                                 height=@(_height * _devicePixelRatio)
-                                 style=@_style
-                                 @ref="_canvas"></Excubo.Blazor.Canvas.Canvas>
+     style="width: @(Width + 4)px; height: @(Height + 4)px !important; display: grid; align-items: center; justify-content: center;"
+     @onkeydown="HandleKeyDown!"
+     @ontouchstart="HandleTouchStart!"
+     @ontouchmove="HandleTouchMove!"
+     @ref="Container">
+    <Canvas id="@Id"
+            width=@(Width * _devicePixelRatio)
+            height=@(Height * _devicePixelRatio)
+            style=@_style
+            @ref="Canvas"></Canvas>
 </div>
 
 @code {
-    [Parameter]
+    [Parameter, EditorRequired]
     public string Id { get; set; } = "some_canvas";
 
     [Parameter]
-    public Func<Task> InitializeAsync { get; set; }
+    public Func<Task> InitializeAsync { get; set; } = null!;
+    
+    [Parameter]
+    public Action Initialize { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public Func<ElapsedEventArgs, ValueTask> LoopAsync { get; set; } = null!;
 
     [Parameter]
-    public Func<Task> LoopAsync { get; set; }
+    public Action<KeyboardEventArgs>? HandleKeyDown { get; set; }
+    [Parameter]
+    public Action<TouchEventArgs>? HandleTouchStart { get; set; }
+    [Parameter]
+    public Action<TouchEventArgs>? HandleTouchMove { get; set; }
+
+    [Parameter]
+    public bool Alpha { get; set; } = false;
+
+    [Parameter]
+    public int CellSize { get; set; } = 1;
+
+    public ElementReference Container { get; private set; }
+    public Canvas Canvas { get; private set; } = null!;
+    public Context2D Context { get; private set; } = null!;
+
+    public double Width { get; private set; } = 400;
+    public double Height { get; private set; } = 400;
 }

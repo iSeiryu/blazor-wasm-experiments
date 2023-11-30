@@ -1,22 +1,16 @@
 ﻿namespace BlazorExperiments.UI.Models.SnakeGame;
 
-public class Snake {
-    private readonly int _size;
-    private readonly int _xLimit;
-    private readonly int _yLimit;
+public class Snake(int size, int fieldWidth, int fieldHeight) {
+    private readonly int _size = size;
+    private readonly int _xLimit = fieldWidth - size;
+    private readonly int _yLimit = fieldHeight - size;
     private SnakeDirection _currentDirection;
 
     private double _xSpeed,
                    _ySpeed;
 
-    public Snake(int size, int fieldWidth, int fieldHeight) {
-        _size = size;
-        _xLimit = fieldWidth - size;
-        _yLimit = fieldHeight - size;
-    }
-
     public Cell Head => Tail[^1];
-    public List<Cell> Tail { get; } = new() { new Cell(0, 0) };
+    public List<Cell> Tail { get; } = [new Cell(0, 0)];
 
     public void Update() {
         for (var i = 0; i < Tail.Count - 1; i++)

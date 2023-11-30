@@ -4,14 +4,17 @@ using Microsoft.JSInterop;
 namespace BlazorExperiments.UI.Services;
 
 public static class BrowserResizeService {
+    public static WindowProperties? CurrentWindowProperties;
     public static event Func<Task>? OnResize;
 
     [JSInvokable]
-    public static async Task OnBrowserResize() {
-        await OnResize?.Invoke();
+    public static async Task OnBrowserResize(object data) {
+        if (OnResize is not null)
+            await OnResize.Invoke();
     }
 
     public static async ValueTask<WindowProperties> GetWindowProperties(IJSRuntime jSRuntime) {
-        return await jSRuntime.InvokeAsync<WindowProperties>("browserResize.getWindowDimensions");
+        CurrentWindowProperties = await jSRuntime.InvokeAsync<WindowProperties>("browserResize.getWindowDimensions");
+        return CurrentWindowProperties;
     }
 }

@@ -1,30 +1,15 @@
-﻿using Excubo.Blazor.Canvas;
-using Excubo.Blazor.Canvas.Contexts;
-using Microsoft.AspNetCore.Components;
+﻿using System.Timers;
 using Microsoft.AspNetCore.Components.Web;
-using Timer = System.Timers.Timer;
 
 namespace BlazorExperiments.UI.Shared;
 
-public partial class TetrisGame : IAsyncDisposable {
-    private Context2D _context;
-    private static Timer _timer;
+public partial class TetrisGame {
     private double _x, _y = 50;
-    protected Canvas _canvas;
-    private ElementReference _container;
+    CanvasComponent _canvas = null!;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (firstRender) {
-            _context = await _canvas.GetContext2DAsync();
-
-            await _context.FontAsync("48px serif");
-            await _context.StrokeTextAsync("current y: " + _y, 100, 50);
-            await _container.FocusAsync();
-
-            _timer = new Timer(10);
-            _timer.Elapsed += async (_, _) => await DrawAsync();
-            _timer.Enabled = true;
-        }
+    async Task InitializeAsync() {
+        await _canvas.Context.FontAsync("48px serif");
+        await _canvas.Context.StrokeTextAsync("current y: " + _y, 100, 50);
     }
 
     public void Move(KeyboardEventArgs e) {
@@ -42,10 +27,12 @@ public partial class TetrisGame : IAsyncDisposable {
         }
     }
 
-    private async ValueTask DrawAsync() {
-        await using var batch = _context.CreateBatch();
+    private async ValueTask DrawAsync(ElapsedEventArgs elapsedEvent) {
+        await using var batch = _canvas.Context.CreateBatch();
 
         await batch.ClearRectAsync(0, 0, 600, 400);
+        await batch.FillStyleAsync("white");
+        await batch.StrokeStyleAsync("white");
         await batch.StrokeTextAsync(DateTime.Now.ToString("mm:ss:FFF"), _x, _y);
         await batch.StrokeRectAsync(75, 140, 150, 110);
         await batch.FillRectAsync(130, 190, 40, 60);
@@ -56,11 +43,5 @@ public partial class TetrisGame : IAsyncDisposable {
         await batch.LineToAsync(250, 140);
         await batch.ClosePathAsync();
         await batch.StrokeAsync();
-    }
-
-    public async ValueTask DisposeAsync() {
-        _timer.Dispose();
-        await _context.DisposeAsync();
-        GC.SuppressFinalize(this);
     }
 }
