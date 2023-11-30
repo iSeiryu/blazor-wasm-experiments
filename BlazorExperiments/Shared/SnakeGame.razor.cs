@@ -14,20 +14,18 @@ public partial class SnakeGame {
     bool _gameOver;
     DateTime _lastTime = DateTime.Now;
     TimeSpan _snakeSpeedInMilliseconds = TimeSpan.Zero;
-    int _level = 1;
+    int _level = 0;
 
     void InitalizeGame() {
-        IncreaseLevel(_level);
+        IncreaseLevel(1);
         _cellSize = _canvas.CellSize;
         _eggs.Add(new(_cellSize, (int)_canvas.Width, (int)_canvas.Height));
         _snake = new Snake(_cellSize, (int)_canvas.Width, (int)_canvas.Height);
+        _canvas.Timer.Enabled = true;
         _gameOver = false;
     }
 
     async ValueTask GameLoopAsync(ElapsedEventArgs elapsedEvent) {
-        if (_gameOver)
-            return;
-
         var eatenEgg = _eggs.FirstOrDefault(egg => _snake.Ate(egg));
         if (eatenEgg is not null) {
             _eggs.Remove(eatenEgg);
@@ -43,8 +41,10 @@ public partial class SnakeGame {
             _snake.Update();
             _lastTime = elapsedEvent.SignalTime;
 
-            if (_snake.IsDead())
+            if (_snake.IsDead()) {
                 await GameOver();
+                return;
+            }
         }
 
         await DrawAsync();
@@ -82,7 +82,7 @@ public partial class SnakeGame {
 
     void IncreaseLevel(int level) {
         _level = level;
-        _snakeSpeedInMilliseconds = TimeSpan.FromMilliseconds(1_000 / 4 / _level);
+        _snakeSpeedInMilliseconds = TimeSpan.FromMilliseconds(1_000 / 3 / _level);
     }
 
     void HandleInput(KeyboardEventArgs e) {
@@ -136,6 +136,7 @@ public partial class SnakeGame {
 
     async Task GameOver() {
         _gameOver = true;
+        _canvas.Timer.Enabled = false;
 
         await _canvas.Context.FillStyleAsync("red");
         await _canvas.Context.FontAsync("42px serif");

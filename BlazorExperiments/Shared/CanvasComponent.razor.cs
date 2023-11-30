@@ -5,8 +5,6 @@ using Timer = System.Timers.Timer;
 
 namespace BlazorExperiments.UI.Shared;
 public partial class CanvasComponent : IAsyncDisposable {
-    Timer _timer = null!;
-
     string _style = "";
     double _devicePixelRatio = 1;
     const int Margin = 50;
@@ -28,6 +26,9 @@ public partial class CanvasComponent : IAsyncDisposable {
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
+            var interval = 1_000 / 60; // 60 fps
+
+            Timer = new Timer(interval);
             Context = await Canvas.GetContext2DAsync(alpha: Alpha);
             await Context.ScaleAsync(_devicePixelRatio, _devicePixelRatio);
             await Container.FocusAsync();
@@ -37,15 +38,13 @@ public partial class CanvasComponent : IAsyncDisposable {
             else
                 await InitializeAsync();
 
-            var interval = 1_000 / 60; // 60 fps
-            _timer = new Timer(interval);
-            _timer.Elapsed += async (_, elapsedEvent) => await LoopAsync(elapsedEvent);
-            _timer.Enabled = true;
+            Timer.Elapsed += async (_, elapsedEvent) => await LoopAsync(elapsedEvent);
+            Timer.Enabled = true;
         }
     }
 
     public async ValueTask DisposeAsync() {
-        _timer?.Dispose();
+        Timer?.Dispose();
         await Context.DisposeAsync();
     }
 }
