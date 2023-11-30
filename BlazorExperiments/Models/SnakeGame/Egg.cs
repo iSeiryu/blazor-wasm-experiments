@@ -14,7 +14,7 @@ public class Egg : Cell {
         NewLocation();
     }
 
-    public void NewLocation() {
+    void NewLocation() {
         X = _random.Next(0, _xLimit) / _size * _size;
         Y = _random.Next(0, _yLimit) / _size * _size;
     }

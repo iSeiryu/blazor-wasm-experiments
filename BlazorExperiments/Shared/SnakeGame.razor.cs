@@ -9,17 +9,17 @@ public partial class SnakeGame {
     TouchPoint? _previousTouch = null;
 
     Snake _snake = null!;
-    Egg _egg = null!;
+    readonly List<Egg> _eggs = [];
     int _cellSize = 0;
     bool _gameOver;
     DateTime _lastTime = DateTime.Now;
     TimeSpan _snakeSpeedInMilliseconds = TimeSpan.Zero;
-    int _level = 4;
+    int _level = 1;
 
     void InitalizeGame() {
-        UpdateSnakeSpeed(_level);
+        IncreaseLevel(_level);
         _cellSize = _canvas.CellSize;
-        _egg = new Egg(_cellSize, (int)_canvas.Width, (int)_canvas.Height);
+        _eggs.Add(new(_cellSize, (int)_canvas.Width, (int)_canvas.Height));
         _snake = new Snake(_cellSize, (int)_canvas.Width, (int)_canvas.Height);
         _gameOver = false;
     }
@@ -28,13 +28,18 @@ public partial class SnakeGame {
         if (_gameOver)
             return;
 
-        if (elapsedEvent.SignalTime - _lastTime > _snakeSpeedInMilliseconds) {
-            if (_snake.Ate(_egg)) {
-                _egg.NewLocation();
-                if (_snake.Tail.Count % 10 == 0)
-                    UpdateSnakeSpeed(_level + 1);
-            }
+        var eatenEgg = _eggs.FirstOrDefault(egg => _snake.Ate(egg));
+        if (eatenEgg is not null) {
+            _eggs.Remove(eatenEgg);
+            if (_snake.Tail.Count % 6 == 0)
+                IncreaseLevel(_level + 1);
+        }
 
+        const double eggSpawnChance = 0.005;
+        if (Random.Shared.NextDouble() < eggSpawnChance && _eggs.Count < 5 || _eggs.Count == 0)
+            AddEgg();
+
+        if (elapsedEvent.SignalTime - _lastTime > _snakeSpeedInMilliseconds) {
             _snake.Update();
             _lastTime = elapsedEvent.SignalTime;
 
@@ -67,12 +72,17 @@ public partial class SnakeGame {
         await batch.StrokeRectAsync(_snake.Head.X, _snake.Head.Y, _cellSize, _cellSize);
 
         await batch.FillStyleAsync("yellow");
-        await batch.FillRectAsync(_egg.X, _egg.Y, _cellSize, _cellSize);
+        foreach (var egg in _eggs)
+            await batch.FillRectAsync(egg.X, egg.Y, _cellSize, _cellSize);
     }
 
-    void UpdateSnakeSpeed(int speed) {
-        _level = speed;
-        _snakeSpeedInMilliseconds = TimeSpan.FromMilliseconds(1_000 / _level);
+    void AddEgg() {
+        _eggs.Add(new(_cellSize, (int)_canvas.Width, (int)_canvas.Height));
+    }
+
+    void IncreaseLevel(int level) {
+        _level = level;
+        _snakeSpeedInMilliseconds = TimeSpan.FromMilliseconds(1_000 / 4 / _level);
     }
 
     void HandleInput(KeyboardEventArgs e) {
