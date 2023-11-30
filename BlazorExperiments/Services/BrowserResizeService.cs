@@ -4,7 +4,7 @@ using Microsoft.JSInterop;
 namespace BlazorExperiments.UI.Services;
 
 public static class BrowserResizeService {
-    public static WindowProperties? CurrentWindowProperties;
+    public static WindowProperties? CurrentWindowProperties { get; private set; }
     public static event Func<Task>? OnResize;
 
     [JSInvokable]
