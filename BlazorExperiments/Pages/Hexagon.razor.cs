@@ -27,9 +27,6 @@ public partial class Hexagon {
     static double _cx, _cy, _dieX, _dieY;
     readonly List<Line> _lines = [];
 
-    DateTime _lastTime = DateTime.Now;
-    int _timePassed = 0;
-
     public void Initialize() {
         _cx = _canvas.Width / 2;
         _cy = _canvas.Height / 2;
@@ -54,20 +51,7 @@ public partial class Hexagon {
         foreach (var line in _lines)
             await Step(line, batch);
 
-        await DrawFps(batch);
-    }
-
-    async ValueTask DrawFps(Batch2D batch) {
-        if (_timePassed > 50) {
-            var fps = 1 / (DateTime.Now - _lastTime).TotalSeconds;
-            _timePassed = 0;
-
-            await batch.ClearRectAsync(0, 0, 120, 30);
-            await batch.FontAsync("bold 20px Arial");
-            await batch.FillTextAsync($"{fps:F} FPS", 10, 20);
-        }
-        _lastTime = DateTime.Now;
-        _timePassed++;
+        await _canvas.DrawFps(batch, elapsedEvent);
     }
 
     async ValueTask Step(Line line, Batch2D batch) {

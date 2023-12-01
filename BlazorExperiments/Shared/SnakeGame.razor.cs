@@ -47,10 +47,10 @@ public partial class SnakeGame {
             }
         }
 
-        await DrawAsync();
+        await DrawAsync(elapsedEvent);
     }
 
-    async ValueTask DrawAsync() {
+    async ValueTask DrawAsync(ElapsedEventArgs elapsedEvent) {
         await using var batch = _canvas.Context.CreateBatch();
 
         await ClearScreenAsync();
@@ -59,6 +59,8 @@ public partial class SnakeGame {
         await batch.FillTextAsync("Score: " + _snake.Tail.Count, _canvas.Width - 55, 10);
         await batch.FillTextAsync("Level: " + _level, _canvas.Width - 55, 20);
 
+        await batch.ShadowBlurAsync(50);
+        await batch.ShadowColorAsync("darkgreen");
         await batch.FillStyleAsync("green");
         foreach (var cell in _snake.Tail) {
             await batch.FillRectAsync(cell.X, cell.Y, _cellSize, _cellSize);
@@ -66,14 +68,19 @@ public partial class SnakeGame {
             await batch.StrokeRectAsync(cell.X, cell.Y, _cellSize, _cellSize);
         }
 
+        await batch.ShadowColorAsync("red");
         await batch.FillStyleAsync("brown");
         await batch.FillRectAsync(_snake.Head.X, _snake.Head.Y, _cellSize, _cellSize);
         await batch.StrokeStyleAsync("white");
         await batch.StrokeRectAsync(_snake.Head.X, _snake.Head.Y, _cellSize, _cellSize);
 
+        await batch.ShadowBlurAsync(0);
         await batch.FillStyleAsync("yellow");
         foreach (var egg in _eggs)
             await batch.FillRectAsync(egg.X, egg.Y, _cellSize, _cellSize);
+
+        if (showFps)
+            await _canvas.DrawFps(batch, elapsedEvent);
     }
 
     void AddEgg() {

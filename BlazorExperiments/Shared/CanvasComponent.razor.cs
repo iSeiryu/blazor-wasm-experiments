@@ -1,5 +1,7 @@
+using System.Timers;
 using BlazorExperiments.UI.Services;
 using Excubo.Blazor.Canvas;
+using Excubo.Blazor.Canvas.Contexts;
 using Microsoft.AspNetCore.Components;
 using Timer = System.Timers.Timer;
 
@@ -10,6 +12,11 @@ public partial class CanvasComponent : IAsyncDisposable {
     const int Margin = 50;
     const int MediaMinWidth = 641;
     const int SideBarWidth = 250;
+
+    double _fps = 0;
+
+    DateTime _lastTimeFpsCalculated = DateTime.Now;
+    DateTime _lastTimeCanvasRendered = DateTime.Now;
 
     protected override async Task OnParametersSetAsync() {
         var windowProperties = await BrowserResizeService.GetWindowProperties(JS);
@@ -41,6 +48,19 @@ public partial class CanvasComponent : IAsyncDisposable {
             Timer.Elapsed += async (_, elapsedEvent) => await LoopAsync(elapsedEvent);
             Timer.Enabled = true;
         }
+    }
+
+    public async ValueTask DrawFps(Batch2D batch, ElapsedEventArgs elapsedEvent) {
+        if (elapsedEvent.SignalTime - _lastTimeFpsCalculated > TimeSpan.FromSeconds(1)) {
+            _fps = 1 / (DateTime.Now - _lastTimeCanvasRendered).TotalSeconds;
+            _lastTimeFpsCalculated = elapsedEvent.SignalTime;
+        }
+
+        await batch.ClearRectAsync(0, 0, 120, 30);
+        await batch.FontAsync("bold 20px Arial");
+        await batch.FillTextAsync($"{_fps:F} FPS", 10, 20);
+
+        _lastTimeCanvasRendered = DateTime.Now;
     }
 
     public async ValueTask DisposeAsync() {
