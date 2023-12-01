@@ -5,31 +5,43 @@
 <PageTitle>Fibonacci</PageTitle>
 
 <h1>Fib</h1>
+<p>This component calculates the nth Fibonacci number. It may take a few minutes to calculate values >45 (depends on a CPU and a browser).</p>
 
 <input @bind="number" type="number" />
-<button class="btn btn-primary" @onclick="fib">Click me</button>
-<p role="status">@output</p>
+<button class="btn btn-primary" type="button" disabled hidden="@(!working)">
+    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+    Loading...
+</button>
+<button class="btn btn-primary" @onclick="FibHandler" hidden="@working">Click me</button>
+<p role="status">Time taken: @timeTaken</p>
+<p role="status">Result: @output</p>
 
 @code {
-string output = "";
-int number { get; set; } = 1;
-Stopwatch timer = new();
+    bool working = false;
+    int output = 0;
+    string timeTaken = "";
+    int number { get; set; } = 30;
+    Stopwatch timer = new();
 
-void fib() {
-    timer.Reset();
-    timer.Start();
+    async Task FibHandler()
+    {
+        working = true;
+        await InvokeAsync(() => StateHasChanged());
+        await Task.Delay(1);
 
-    var result = fib(number);
+        timer.Reset();
+        timer.Start();
+        output = fib(number);
+        timer.Stop();
+        timeTaken = timer.Elapsed.ToString(@"m\:ss\.fff");
+        working = false;
+    }
 
-    timer.Stop();
-    output = "Time taken in: " + timer.Elapsed.ToString(@"m\:ss\.fff");
-}
-
-int fib(int n)
-{
-    if ((n == 0) || (n == 1))
-        return n;
-    else
-        return fib(n - 1) + fib(n - 2);
-}
+    int fib(int n)
+    {
+        if ((n == 0) || (n == 1))
+            return n;
+        else
+            return fib(n - 1) + fib(n - 2);
+    }
 }
