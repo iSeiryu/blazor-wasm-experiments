@@ -18,7 +18,7 @@ public partial class CanvasComponent : IAsyncDisposable {
     DateTime _lastTimeFpsCalculated = DateTime.Now;
     DateTime _lastTimeCanvasRendered = DateTime.Now;
 
-    protected override async Task OnParametersSetAsync() {
+    async Task SetCanvasSize() {
         var windowProperties = await BrowserResizeService.GetWindowProperties(JS);
         var sideBarWidth = windowProperties.Width > MediaMinWidth ? SideBarWidth : 0;
         var topMenuHeight = sideBarWidth == 0 ? Margin : 0;
@@ -35,15 +35,17 @@ public partial class CanvasComponent : IAsyncDisposable {
         if (firstRender) {
             var interval = 1_000 / 60; // 60 fps
 
+            await SetCanvasSize();
             Timer = new Timer(interval);
             Context = await Canvas.GetContext2DAsync(alpha: Alpha);
-            await Context.ScaleAsync(_devicePixelRatio, _devicePixelRatio);
-            await Container.FocusAsync();
 
             if (Initialize != null)
                 Initialize();
             else
                 await InitializeAsync();
+
+            await Context.ScaleAsync(_devicePixelRatio, _devicePixelRatio);
+            await Container.FocusAsync();
 
             Timer.Elapsed += async (_, elapsedEvent) => await LoopAsync(elapsedEvent);
             Timer.Enabled = true;

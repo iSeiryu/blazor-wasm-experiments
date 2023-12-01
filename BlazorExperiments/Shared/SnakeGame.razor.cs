@@ -10,7 +10,7 @@ public partial class SnakeGame {
 
     Snake _snake = null!;
     readonly List<Egg> _eggs = [];
-    int _cellSize = 0;
+    int _cellSize = 1;
     bool _gameOver;
     DateTime _lastTime = DateTime.Now;
     TimeSpan _snakeSpeedInMilliseconds = TimeSpan.Zero;
@@ -19,10 +19,12 @@ public partial class SnakeGame {
     void InitalizeGame() {
         IncreaseLevel(1);
         _cellSize = _canvas.CellSize;
+        _eggs.Clear();
         _eggs.Add(new(_cellSize, (int)_canvas.Width, (int)_canvas.Height));
         _snake = new Snake(_cellSize, (int)_canvas.Width, (int)_canvas.Height);
         _canvas.Timer.Enabled = true;
         _gameOver = false;
+        StateHasChanged();
     }
 
     async ValueTask GameLoopAsync(ElapsedEventArgs elapsedEvent) {

@@ -7,9 +7,8 @@ public partial class TetrisGame {
     private double _x, _y = 50;
     CanvasComponent _canvas = null!;
 
-    async Task InitializeAsync() {
-        await _canvas.Context.FontAsync("48px serif");
-        await _canvas.Context.StrokeTextAsync("current y: " + _y, 100, 50);
+    void Initialize() {
+        StateHasChanged();
     }
 
     public void Move(KeyboardEventArgs e) {
@@ -30,9 +29,10 @@ public partial class TetrisGame {
     private async ValueTask DrawAsync(ElapsedEventArgs elapsedEvent) {
         await using var batch = _canvas.Context.CreateBatch();
 
-        await batch.ClearRectAsync(0, 0, 600, 400);
+        await batch.ClearRectAsync(0, 0, _canvas.Width, _canvas.Height);
         await batch.FillStyleAsync("white");
         await batch.StrokeStyleAsync("white");
+        await batch.FontAsync("48px serif");
         await batch.StrokeTextAsync(DateTime.Now.ToString("mm:ss:FFF"), _x, _y);
         await batch.StrokeRectAsync(75, 140, 150, 110);
         await batch.FillRectAsync(130, 190, 40, 60);

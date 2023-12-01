@@ -28,6 +28,7 @@ public partial class Hexagon {
     readonly List<Line> _lines = [];
 
     public void Initialize() {
+        _canvas.Timer.Enabled = false;
         _cx = _canvas.Width / 2;
         _cy = _canvas.Height / 2;
 
@@ -37,6 +38,9 @@ public partial class Hexagon {
         _lines.Clear();
         for (int i = 0; i < Count; i++)
             _lines.Add(new());
+
+        _canvas.Timer.Enabled = true;
+        StateHasChanged();
     }
 
     private async ValueTask Loop(ElapsedEventArgs elapsedEvent) {
