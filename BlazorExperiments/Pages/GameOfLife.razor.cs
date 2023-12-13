@@ -8,7 +8,8 @@ public partial class GameOfLife {
     int[,] _board = null!;
     int _rows, _cols, _cellSize;
     DateTime _lastTime = DateTime.Now;
-    readonly TimeSpan _snakeSpeedInMilliseconds = TimeSpan.FromMilliseconds(400);
+    TimeSpan _refreshSpeedInMilliseconds = TimeSpan.Zero;
+    double _milliSeconds = 400;
 
     void Initialize() {
         _cellSize = 10;
@@ -22,11 +23,13 @@ public partial class GameOfLife {
         AddStableShape(_board, 10, 10);
         AddTetrominoShape(_board, 5, 30);
 
+        _refreshSpeedInMilliseconds = TimeSpan.FromMilliseconds(_milliSeconds);
+
         StateHasChanged();
     }
 
     async ValueTask Loop(ElapsedEventArgs elapsedEvent) {
-        if (elapsedEvent.SignalTime - _lastTime < _snakeSpeedInMilliseconds) {
+        if (elapsedEvent.SignalTime - _lastTime < _refreshSpeedInMilliseconds) {
             return;
         }
         _lastTime = elapsedEvent.SignalTime;

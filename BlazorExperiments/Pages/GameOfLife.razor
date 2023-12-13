@@ -13,4 +13,20 @@
                  @ref="_canvas">
 </CanvasComponent>
 
+<div class="d-grid">
+    <div class="row">
+        <div class="flex">
+            <label for="lines-count">Refresh every: </label>
+            <span>@_milliSeconds ms</span>
+        </div>
+        <input id="lines-count" type="range" min="16" max="1000" @bind="_milliSeconds" @bind:after="Initialize" />
+    </div>
 
+    <div class="row">
+        <p>Canvas Width: @_canvas?.Width</p>
+        <p>Canvas Height: @_canvas?.Height</p>
+        <p>Cell Size: @_canvas?.CellSize</p>
+        <p>Rows: @_rows</p>
+        <p>Columns: @_cols</p>
+    </div>
+</div>
