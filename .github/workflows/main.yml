@@ -46,3 +46,4 @@ jobs:
           folder: release/wwwroot
           repository-name: iSeiryu/iseiryu.github.io
           target-folder: blazor
+          token: ${{ secrets.DEPLOY_TOKEN }}
