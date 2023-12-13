@@ -38,7 +38,9 @@ jobs:
         run: dotnet publish BlazorExperiments/BlazorExperiments.UI.csproj -c Release -o release --nologo
 
       - name: Commit wwwroot to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4.2.3
+        uses: JamesIves/github-pages-deploy-action@v4.5.0
         with:
-          branch: gh-pages
+          branch: main
           folder: release/wwwroot
+          repository-name: iSeiryu/iseiryu.github.io
+          target-folder: blazor
