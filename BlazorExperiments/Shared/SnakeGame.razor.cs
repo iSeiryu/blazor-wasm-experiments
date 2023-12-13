@@ -1,5 +1,6 @@
 ﻿using System.Timers;
 using BlazorExperiments.UI.Models.SnakeGame;
+using Excubo.Blazor.Canvas.Contexts;
 using Microsoft.AspNetCore.Components.Web;
 
 namespace BlazorExperiments.UI.Shared;
@@ -55,7 +56,7 @@ public partial class SnakeGame {
     async ValueTask DrawAsync(ElapsedEventArgs elapsedEvent) {
         await using var batch = _canvas.Context.CreateBatch();
 
-        await ClearScreenAsync();
+        await ClearScreenAsync(batch);
         await batch.FillStyleAsync("white");
         await batch.FontAsync("12px serif");
         await batch.FillTextAsync("Score: " + _snake.Tail.Count, _canvas.Width - 55, 10);
@@ -137,10 +138,10 @@ public partial class SnakeGame {
         _previousTouch = e.Touches[^1];
     }
 
-    async Task ClearScreenAsync() {
-        await _canvas.Context.ClearRectAsync(0, 0, _canvas.Width, _canvas.Height);
-        await _canvas.Context.FillStyleAsync("black");
-        await _canvas.Context.FillRectAsync(0, 0, _canvas.Width, _canvas.Height);
+    async Task ClearScreenAsync(Batch2D batch) {
+        await batch.ClearRectAsync(0, 0, _canvas.Width, _canvas.Height);
+        await batch.FillStyleAsync("black");
+        await batch.FillRectAsync(0, 0, _canvas.Width, _canvas.Height);
     }
 
     async Task GameOver() {

@@ -1,0 +1,16 @@
+﻿@page "/game-of-life"
+
+@using Excubo.Blazor.Canvas
+@using Excubo.Blazor.Canvas.Contexts
+@using BlazorExperiments.UI.Shared
+
+@inject IJSRuntime JS
+
+<CanvasComponent Id="hexagon"
+                 Initialize="Initialize"
+                 LoopAsync="Loop"
+                 CellSize="10"
+                 @ref="_canvas">
+</CanvasComponent>
+
+
