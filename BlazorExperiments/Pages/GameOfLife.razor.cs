@@ -6,22 +6,30 @@ namespace BlazorExperiments.UI.Pages;
 public partial class GameOfLife {
     CanvasComponent _canvas = null!;
     int[,] _board = null!;
-    int _rows, _cols, _cellSize;
+    int _rows = 0;
+    int _cols = 0;
+    const int CellSize = 10;
     DateTime _lastTime = DateTime.Now;
     TimeSpan _refreshSpeedInMilliseconds = TimeSpan.Zero;
     double _milliSeconds = 400;
 
     void Initialize() {
-        _cellSize = 10;
-        _rows = (int)_canvas.Height / _cellSize;
-        _cols = (int)_canvas.Width / _cellSize;
+        _rows = (int)_canvas.Height / CellSize;
+        _cols = (int)_canvas.Width / CellSize;
         _board = new int[_rows, _cols];
+        StateHasChanged();
 
         AddGliderShape(_board);
         AddExploderShape(_board, 10, 0);
-        AddPulsarShape(_board, 20, 20);
         AddStableShape(_board, 10, 10);
-        AddTetrominoShape(_board, 5, 30);
+        if (_cols < 35) {
+            AddPulsarShape(_board, 20, 10);
+            AddTetrominoShape(_board, 35, 20);
+        }
+        else {
+            AddPulsarShape(_board, 20, 20);
+            AddTetrominoShape(_board, 10, 30);
+        }
 
         _refreshSpeedInMilliseconds = TimeSpan.FromMilliseconds(_milliSeconds);
 
@@ -38,29 +46,29 @@ public partial class GameOfLife {
         await ClearScreenAsync(batch);
         int[,] newBoard = new int[_rows, _cols];
 
-        for (int i = 0; i < _rows; i++) {
-            for (int j = 0; j < _cols; j++) {
+        for (int row = 0; row < _rows; row++) {
+            for (int col = 0; col < _cols; col++) {
                 int liveNeighbors = 0;
-                liveNeighbors = GetLiveNeighbors(i, j);
+                liveNeighbors = GetLiveNeighbors(col, row);
 
-                if (_board[i, j] == 1 && (liveNeighbors < 2 || liveNeighbors > 3)) {
-                    newBoard[i, j] = 0;
+                if (_board[row, col] == 1 && (liveNeighbors < 2 || liveNeighbors > 3)) {
+                    newBoard[row, col] = 0;
                 }
-                else if (_board[i, j] == 0 && liveNeighbors == 3) {
-                    newBoard[i, j] = 1;
+                else if (_board[row, col] == 0 && liveNeighbors == 3) {
+                    newBoard[row, col] = 1;
                 }
                 else {
-                    newBoard[i, j] = _board[i, j];
+                    newBoard[row, col] = _board[row, col];
                 }
 
-                if (newBoard[i, j] == 1) {
+                if (newBoard[row, col] == 1) {
                     await batch.FillStyleAsync("white");
                 }
                 else {
                     await batch.FillStyleAsync("black");
                 }
 
-                await batch.FillRectAsync(j * _cellSize, i * _cellSize, _cellSize, _cellSize);
+                await batch.FillRectAsync(col * CellSize, row * CellSize, CellSize, CellSize);
             }
         }
         _board = newBoard;
@@ -69,19 +77,19 @@ public partial class GameOfLife {
         int liveNeighbors = 0;
 
         // Check the 8 surrounding cells
-        for (int i = -1; i <= 1; i++) {
-            for (int j = -1; j <= 1; j++) {
+        for (int row = -1; row <= 1; row++) {
+            for (int col = -1; col <= 1; col++) {
                 // Skip the cell itself
-                if (i == 0 && j == 0)
+                if (row == 0 && col == 0)
                     continue;
 
-                int newX = x + i;
-                int newY = y + j;
+                int newRow = y + row;
+                int newCol = x + col;
 
                 // Check if the coordinates are within the board boundaries
-                if (newX >= 0 && newX < _board.GetLength(0) && newY >= 0 && newY < _board.GetLength(1)) {
+                if (newRow >= 0 && newRow < _board.GetLength(0) && newCol >= 0 && newCol < _board.GetLength(1)) {
                     // If the neighbor is alive, increment the count
-                    if (_board[newX, newY] == 1)
+                    if (_board[newRow, newCol] == 1)
                         liveNeighbors++;
                 }
             }
@@ -103,64 +111,64 @@ public partial class GameOfLife {
         board[3, 2] = 1;
     }
 
-    void AddExploderShape(int[,] board, int x = 0, int y = 0) {
-        board[x, y + 2] = 1;
-        board[x + 1, y] = 1;
-        board[x + 1, y + 2] = 1;
-        board[x + 2, y] = 1;
-        board[x + 2, y + 1] = 1;
-        board[x + 2, y + 2] = 1;
-        board[x + 3, y + 2] = 1;
+    void AddExploderShape(int[,] board, int row = 0, int col = 0) {
+        board[row, col + 2] = 1;
+        board[row + 1, col] = 1;
+        board[row + 1, col + 2] = 1;
+        board[row + 2, col] = 1;
+        board[row + 2, col + 1] = 1;
+        board[row + 2, col + 2] = 1;
+        board[row + 3, col + 2] = 1;
     }
 
-    void AddStableShape(int[,] board, int x = 0, int y = 0) {
-        board[x, y] = 1;
-        board[x + 1, y] = 1;
-        board[x, y + 1] = 1;
-        board[x, y + 2] = 1;
+    void AddStableShape(int[,] board, int row = 0, int col = 0) {
+        board[row, col] = 1;
+        board[row + 1, col] = 1;
+        board[row, col + 1] = 1;
+        board[row, col + 2] = 1;
     }
 
-    void AddTetrominoShape(int[,] board, int x = 0, int y = 0) {
-        board[x, y] = 1;
-        board[x, y + 1] = 1;
-        board[x, y + 2] = 1;
-        board[x - 1, y + 1] = 1;
+    void AddTetrominoShape(int[,] board, int row = 0, int col = 0) {
+        board[row, col] = 1;
+        board[row, col + 1] = 1;
+        board[row, col + 2] = 1;
+        board[row - 1, col + 1] = 1;
     }
 
-    void AddPulsarShape(int[,] board, int x = 0, int y = 0) {
-        board[x, y + 2] = 1;
-        board[x, y + 3] = 1;
-        board[x, y + 4] = 1;
-        board[x, y + 8] = 1;
-        board[x, y + 9] = 1;
-        board[x, y + 10] = 1;
-        board[x + 2, y] = 1;
-        board[x + 2, y + 5] = 1;
-        board[x + 2, y + 7] = 1;
-        board[x + 2, y + 12] = 1;
-        board[x + 3, y] = 1;
-        board[x + 3, y + 5] = 1;
-        board[x + 3, y + 7] = 1;
-        board[x + 3, y + 12] = 1;
-        board[x + 4, y] = 1;
-        board[x + 4, y + 5] = 1;
-        board[x + 4, y + 7] = 1;
-        board[x + 4, y + 12] = 1;
-        board[x + 5, y + 2] = 1;
-        board[x + 5, y + 3] = 1;
-        board[x + 5, y + 4] = 1;
-        board[x + 5, y + 8] = 1;
-        board[x + 5, y + 9] = 1;
-        board[x + 5, y + 10] = 1;
-        board[x + 7, y + 2] = 1;
-        board[x + 7, y + 3] = 1;
-        board[x + 7, y + 4] = 1;
-        board[x + 7, y + 8] = 1;
-        board[x + 7, y + 9] = 1;
-        board[x + 7, y + 10] = 1;
-        board[x + 8, y] = 1;
-        board[x + 8, y + 5] = 1;
-        board[x + 8, y + 7] = 1;
-        board[x + 8, y + 12] = 1;
+    void AddPulsarShape(int[,] board, int row = 0, int col = 0) {
+        board[row, col + 2] = 1;
+        board[row, col + 3] = 1;
+        board[row, col + 4] = 1;
+        board[row, col + 8] = 1;
+        board[row, col + 9] = 1;
+        board[row, col + 10] = 1;
+        board[row + 2, col] = 1;
+        board[row + 2, col + 5] = 1;
+        board[row + 2, col + 7] = 1;
+        board[row + 2, col + 12] = 1;
+        board[row + 3, col] = 1;
+        board[row + 3, col + 5] = 1;
+        board[row + 3, col + 7] = 1;
+        board[row + 3, col + 12] = 1;
+        board[row + 4, col] = 1;
+        board[row + 4, col + 5] = 1;
+        board[row + 4, col + 7] = 1;
+        board[row + 4, col + 12] = 1;
+        board[row + 5, col + 2] = 1;
+        board[row + 5, col + 3] = 1;
+        board[row + 5, col + 4] = 1;
+        board[row + 5, col + 8] = 1;
+        board[row + 5, col + 9] = 1;
+        board[row + 5, col + 10] = 1;
+        board[row + 7, col + 2] = 1;
+        board[row + 7, col + 3] = 1;
+        board[row + 7, col + 4] = 1;
+        board[row + 7, col + 8] = 1;
+        board[row + 7, col + 9] = 1;
+        board[row + 7, col + 10] = 1;
+        board[row + 8, col] = 1;
+        board[row + 8, col + 5] = 1;
+        board[row + 8, col + 7] = 1;
+        board[row + 8, col + 12] = 1;
     }
 }
