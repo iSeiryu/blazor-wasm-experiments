@@ -1,6 +1,6 @@
 Experiments with [Blazor](https://dotnet.microsoft.com/en-us/apps/aspnet/web-apps/blazor) WASM.
 
-Snake game: https://iseiryu.github.io/blazor
+Snake game: https://iseiryu.github.io/blazor/snake
 
 ### Build and Run
 

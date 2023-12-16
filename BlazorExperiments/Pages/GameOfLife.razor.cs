@@ -1,51 +1,72 @@
 using System.Timers;
+using BlazorExperiments.UI.Components;
 using BlazorExperiments.UI.Shared;
 using Excubo.Blazor.Canvas.Contexts;
+using Microsoft.AspNetCore.Components.Web;
 
 namespace BlazorExperiments.UI.Pages;
 public partial class GameOfLife {
     CanvasComponent _canvas = null!;
+    Button _button = null!;
     bool[,] _board = null!;
     int _rows = 0;
     int _cols = 0;
     long _generation = 0;
+    bool _isPaused = true;
     const int CellSize = 10;
     DateTime _lastTime = DateTime.Now;
     TimeSpan _refreshSpeedInMilliseconds = TimeSpan.Zero;
     double _milliSeconds = 400;
 
     void Initialize() {
+        _refreshSpeedInMilliseconds = TimeSpan.FromMilliseconds(_milliSeconds);
         _rows = (int)_canvas.Height / CellSize;
         _cols = (int)_canvas.Width / CellSize;
         _board = new bool[_rows, _cols];
         _generation = 0;
+        _button = new Button("Start", 10, 10, Start);
+        _button.Show();
         StateHasChanged();
 
-        AddGliderShape(ref _board);
-        AddExploderShape(ref _board, 10, 0);
-        AddStableShape(ref _board, 10, 10);
-        if (_cols < 35) {
-            AddPulsarShape(ref _board, 20, 10);
-            AddTetrominoShape(ref _board, 35, 20);
-        }
-        else {
-            AddPulsarShape(ref _board, 20, 20);
-            AddTetrominoShape(ref _board, 10, 30);
-        }
+        //AddGliderShape(ref _board);
+        //AddExploderShape(ref _board, 10, 0);
+        //AddStableShape(ref _board, 10, 10);
+        //if (_cols < 35) {
+        //    AddPulsarShape(ref _board, 20, 10);
+        //    AddTetrominoShape(ref _board, 35, 20);
+        //}
+        //else {
+        //    AddPulsarShape(ref _board, 20, 20);
+        //    AddTetrominoShape(ref _board, 10, 30);
+        //}
 
-        _refreshSpeedInMilliseconds = TimeSpan.FromMilliseconds(_milliSeconds);
-        _canvas.Timer.Enabled = true;
+        //_canvas.Timer.Enabled = true;
 
-        StateHasChanged();
+        //StateHasChanged();
     }
 
     async ValueTask Loop(ElapsedEventArgs elapsedEvent) {
+        await using var batch = _canvas.Context.CreateBatch();
+        if (_isPaused) {
+            await ClearScreenAsync(batch);
+            await _button.Draw(batch);
+            await batch.FillStyleAsync("white");
+            for (int row = 0; row < _rows; row++) {
+                for (int col = 0; col < _cols; col++) {
+                    if (_board[row, col]) {
+                        await batch.FillRectAsync(col * CellSize, row * CellSize, CellSize, CellSize);
+                    }
+                }
+            }
+
+            return;
+        }
+
         if (elapsedEvent.SignalTime - _lastTime < _refreshSpeedInMilliseconds) {
             return;
         }
         _lastTime = elapsedEvent.SignalTime;
 
-        await using var batch = _canvas.Context.CreateBatch();
         await ClearScreenAsync(batch);
         await batch.FillStyleAsync("white");
 
@@ -105,8 +126,26 @@ public partial class GameOfLife {
         return liveNeighbors;
     }
 
+    void Start() {
+        _isPaused = false;
+        _button.Hide();
+    }
+
     void Pause() {
-        _canvas.Timer.Enabled = false;
+        _isPaused = true;
+        _button.Show();
+    }
+
+    bool IsStartButtonClicked(double x, double y) {
+        return x >= _button.X && x <= _button.X + _button.Width && y >= _button.Y && y <= _button.Y + _button.Height;
+    }
+
+    void HandleMouse(MouseEventArgs e) {
+        if (IsStartButtonClicked(e.OffsetX, e.OffsetY)) {
+            Start();
+        }
+
+        _board[(int)(e.OffsetY / CellSize), (int)(e.OffsetX / CellSize)] = true;
     }
 
     async Task ClearScreenAsync(Batch2D batch) {

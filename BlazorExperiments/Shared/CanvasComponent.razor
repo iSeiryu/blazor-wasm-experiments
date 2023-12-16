@@ -7,6 +7,7 @@
      tabindex="0"
      style="width: @(Width + 4)px; height: @(Height + 4)px !important; display: grid; align-items: center; justify-content: center;"
      @onkeydown="HandleKeyDown!"
+     @onmouseup="HandleMouseUp!"
      @ontouchstart="HandleTouchStart!"
      @ontouchmove="HandleTouchMove!"
      @ref="Container">
@@ -32,6 +33,8 @@
 
     [Parameter]
     public Action<KeyboardEventArgs>? HandleKeyDown { get; set; }
+    [Parameter]
+    public Action<MouseEventArgs>? HandleMouseUp { get; set; }
     [Parameter]
     public Action<TouchEventArgs>? HandleTouchStart { get; set; }
     [Parameter]
