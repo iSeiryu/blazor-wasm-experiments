@@ -8,7 +8,7 @@ public static class BrowserResizeService {
     public static event Func<Task>? OnResize;
 
     [JSInvokable]
-    public static async Task OnBrowserResize(object data) {
+    public static async Task OnBrowserResize() {
         if (OnResize is not null)
             await OnResize.Invoke();
     }
