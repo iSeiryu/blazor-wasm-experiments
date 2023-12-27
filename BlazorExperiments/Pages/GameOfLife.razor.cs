@@ -20,7 +20,7 @@ public partial class GameOfLife {
     TimeSpan _refreshSpeedInMilliseconds = TimeSpan.Zero;
     double _milliSeconds = 400;
 
-    async Task Initialize() {
+    async Task InitializeGame() {
         _refreshSpeedInMilliseconds = TimeSpan.FromMilliseconds(_milliSeconds);
         _rows = (int)(_canvas.Height) / CellSize;
         _cols = (int)(_canvas.Width) / CellSize;
