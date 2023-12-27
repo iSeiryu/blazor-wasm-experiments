@@ -1,25 +1,22 @@
 ﻿namespace BlazorExperiments.UI.Models.SnakeGame;
 
 public class Snake(int size, int fieldWidth, int fieldHeight) {
-    private readonly int _size = size;
-    private readonly int _xLimit = fieldWidth - size;
-    private readonly int _yLimit = fieldHeight - size;
-    private SnakeDirection _currentDirection;
+    readonly int _size = size;
+    readonly int _xLimit = fieldWidth - size;
+    readonly int _yLimit = fieldHeight - size;
+    SnakeDirection _currentDirection;
 
-    private double _xSpeed,
-                   _ySpeed;
+    double _xSpeed,
+           _ySpeed;
 
     public Cell Head => Tail[^1];
-    public List<Cell> Tail { get; } = [new Cell(0, 0)];
+    public List<Cell> Tail { get; } = [new(0, 0)];
 
     public void Update() {
         for (var i = 0; i < Tail.Count - 1; i++)
             Tail[i] = Tail[i + 1];
 
-        Tail[^1] = new Cell(Head.X, Head.Y);
-
-        Head.X += _xSpeed;
-        Head.Y += _ySpeed;
+        Tail[^1] = new(Head.X + _xSpeed, Head.Y + _ySpeed);
 
         if (Head.X > _xLimit)
             Head.X = 0;
@@ -65,8 +62,7 @@ public class Snake(int size, int fieldWidth, int fieldHeight) {
 
     public bool Ate(Egg egg) {
         if (egg.X == Head.X && egg.Y == Head.Y) {
-            var last = Tail.Last();
-            Tail.Add(new Cell(last.X, last.Y));
+            Tail.Add(new(Head.X, Head.Y));
 
             return true;
         }
