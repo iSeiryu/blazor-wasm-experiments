@@ -29,23 +29,23 @@ public partial class CanvasComponent : IAsyncDisposable {
         Width -= Width % CellSize;
         Height -= Height % CellSize;
         _style = $"width: {Width}px; height: {Height}px;";
+        StateHasChanged();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            var interval = 1_000 / 60; // 60 fps
+            const int interval = 1_000 / 60; // 60 fps
 
             await SetCanvasSize();
             Timer = new Timer(interval);
             Context = await Canvas.GetContext2DAsync(alpha: Alpha);
+            await Context.ScaleAsync(_devicePixelRatio, _devicePixelRatio);
+            await Container.FocusAsync();
 
             if (Initialize != null)
                 Initialize();
             else
                 await InitializeAsync();
-
-            await Context.ScaleAsync(_devicePixelRatio, _devicePixelRatio);
-            await Container.FocusAsync();
 
             Timer.Elapsed += async (_, elapsedEvent) => await LoopAsync(elapsedEvent);
             Timer.Enabled = true;

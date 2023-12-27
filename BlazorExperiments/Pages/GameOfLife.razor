@@ -7,7 +7,7 @@
 @inject IJSRuntime JS
 
 <CanvasComponent Id="hexagon"
-                 Initialize="Initialize"
+                 InitializeAsync="Initialize"
                  LoopAsync="Loop"
                  HandleMouseUp="HandleMouse"
                  CellSize="CellSize"
@@ -20,7 +20,7 @@
             <label for="lines-count">Refresh every: </label>
             <span>@_milliSeconds ms</span>
         </div>
-        <input id="lines-count" type="range" min="16" max="1000" @bind="_milliSeconds" @bind:after="Initialize" />
+        <input id="lines-count" type="range" min="16" max="1000" @bind="_milliSeconds" @bind:after="ChangeSpeed" />
     </div>
 
     <div class="row">
