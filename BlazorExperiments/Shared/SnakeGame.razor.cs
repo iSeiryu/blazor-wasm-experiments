@@ -17,7 +17,7 @@ public partial class SnakeGame {
     TimeSpan _snakeSpeedInMilliseconds = TimeSpan.Zero;
     int _level = 0;
 
-    void InitalizeGame() {
+    void InitializeGame() {
         IncreaseLevel(1);
         _cellSize = _canvas.CellSize;
         _eggs.Clear();
@@ -59,8 +59,8 @@ public partial class SnakeGame {
         await ClearScreenAsync(batch);
         await batch.FillStyleAsync("white");
         await batch.FontAsync("12px serif");
-        await batch.FillTextAsync("Score: " + _snake.Tail.Count, _canvas.Width - 55, 10);
-        await batch.FillTextAsync("Level: " + _level, _canvas.Width - 55, 20);
+        await batch.FillTextAsync($"Score: {_snake.Tail.Count}", _canvas.Width - 55, 10);
+        await batch.FillTextAsync($"Level: {_level}", _canvas.Width - 55, 20);
 
         await batch.ShadowBlurAsync(50);
         await batch.ShadowColorAsync("darkgreen");
@@ -97,7 +97,7 @@ public partial class SnakeGame {
 
     void HandleInput(KeyboardEventArgs e) {
         if (_gameOver)
-            InitalizeGame();
+            InitializeGame();
 
         else if (e.Code == "ArrowDown")
             _snake.SetDirection(SnakeDirection.Down);
@@ -111,7 +111,7 @@ public partial class SnakeGame {
 
     void HandleTouchStart(TouchEventArgs e) {
         if (_gameOver)
-            InitalizeGame();
+            InitializeGame();
 
         _previousTouch = e?.Touches.FirstOrDefault();
     }
