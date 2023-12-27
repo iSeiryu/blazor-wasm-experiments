@@ -6,10 +6,11 @@
 <div id="canvas-container"
      tabindex="0"
      style="width: @(Width + 4)px; height: @(Height + 4)px !important; display: grid; align-items: center; justify-content: center;"
-     @onkeydown="HandleKeyDown!"
-     @onmouseup="HandleMouseUp!"
-     @ontouchstart="HandleTouchStart!"
-     @ontouchmove="HandleTouchMove!"
+     @onkeydown="HandleKeyDown"
+     @onmouseup="@(async (mouseEventArgs) => await HandleMouseUp(mouseEventArgs))"
+     @onmousemove="@(async (mouseEventArgs) => await HandleMouseMove(mouseEventArgs))"
+     @ontouchstart="HandleTouchStart"
+     @ontouchmove="HandleTouchMove"
      @ref="Container">
     <Canvas id="@Id"
             width=@(Width * _devicePixelRatio)
@@ -24,7 +25,7 @@
 
     [Parameter]
     public Func<Task> InitializeAsync { get; set; } = null!;
-    
+
     [Parameter]
     public Action Initialize { get; set; } = null!;
 
@@ -32,16 +33,18 @@
     public Func<ElapsedEventArgs, ValueTask> LoopAsync { get; set; } = null!;
 
     [Parameter]
-    public Action<KeyboardEventArgs>? HandleKeyDown { get; set; }
+    public Action<KeyboardEventArgs>? HandleKeyDown { get; set; } = (KeyboardEventArgs) => { };
     [Parameter]
-    public Action<MouseEventArgs>? HandleMouseUp { get; set; }
+    public Func<MouseEventArgs, ValueTask>? HandleMouseUp { get; set; } = (MouseEventArgs) => ValueTask.CompletedTask;
     [Parameter]
-    public Action<TouchEventArgs>? HandleTouchStart { get; set; }
+    public Func<MouseEventArgs, ValueTask>? HandleMouseMove { get; set; } = (MouseEventArgs) => ValueTask.CompletedTask;
     [Parameter]
-    public Action<TouchEventArgs>? HandleTouchMove { get; set; }
+    public Action<TouchEventArgs>? HandleTouchStart { get; set; } = (TouchEventArgs) => { };
+    [Parameter]
+    public Action<TouchEventArgs>? HandleTouchMove { get; set; } = (TouchEventArgs) => { };
 
     [Parameter]
-    public bool Alpha { get; set; } = false;
+    public bool Alpha { get; set; }
 
     [Parameter]
     public int CellSize { get; set; } = 1;
