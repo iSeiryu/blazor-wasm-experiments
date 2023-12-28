@@ -22,7 +22,7 @@ public partial class SnakeGame {
         _cellSize = _canvas.CellSize;
         _eggs.Clear();
         _eggs.Add(new(_cellSize, (int)_canvas.Width, (int)_canvas.Height));
-        _snake = new Snake(_cellSize, (int)_canvas.Width, (int)_canvas.Height);
+        _snake = new Snake(_cellSize, (int)_canvas.Width, (int)_canvas.Height, 5);
         _canvas.Timer.Enabled = true;
         _gameOver = false;
         StateHasChanged();
@@ -40,15 +40,14 @@ public partial class SnakeGame {
         if (Random.Shared.NextDouble() < eggSpawnChance && _eggs.Count < 5 || _eggs.Count == 0)
             AddEgg();
 
-        if (elapsedEvent.SignalTime - _lastTime > _snakeSpeedInMilliseconds) {
-            _snake.Update();
-            _lastTime = elapsedEvent.SignalTime;
+        var deltaTime = elapsedEvent.SignalTime - _lastTime;
+        _snake.Update(deltaTime.TotalMilliseconds / 1_000);
+        _lastTime = elapsedEvent.SignalTime;
 
-            if (_snake.IsDead()) {
-                await GameOver();
-                return;
-            }
-        }
+        //if (_snake.IsDead()) {
+        //    await GameOver();
+        //    return;
+        //}
 
         await DrawAsync(elapsedEvent);
     }
@@ -66,16 +65,16 @@ public partial class SnakeGame {
         await batch.ShadowColorAsync("darkgreen");
         await batch.FillStyleAsync("green");
         foreach (var cell in _snake.Tail) {
-            await batch.FillRectAsync(cell.X, cell.Y, _cellSize, _cellSize);
+            await batch.FillRectAsync(cell.AnimationPosition.X, cell.AnimationPosition.Y, _cellSize, _cellSize);
             await batch.StrokeStyleAsync("white");
-            await batch.StrokeRectAsync(cell.X, cell.Y, _cellSize, _cellSize);
+            await batch.StrokeRectAsync(cell.AnimationPosition.X, cell.AnimationPosition.Y, _cellSize, _cellSize);
         }
 
         await batch.ShadowColorAsync("red");
         await batch.FillStyleAsync("brown");
-        await batch.FillRectAsync(_snake.Head.X, _snake.Head.Y, _cellSize, _cellSize);
+        await batch.FillRectAsync(_snake.Head.AnimationPosition.X, _snake.Head.AnimationPosition.Y, _cellSize, _cellSize);
         await batch.StrokeStyleAsync("white");
-        await batch.StrokeRectAsync(_snake.Head.X, _snake.Head.Y, _cellSize, _cellSize);
+        await batch.StrokeRectAsync(_snake.Head.AnimationPosition.X, _snake.Head.AnimationPosition.Y, _cellSize, _cellSize);
 
         await batch.ShadowBlurAsync(0);
         await batch.FillStyleAsync("yellow");
