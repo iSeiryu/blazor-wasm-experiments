@@ -14,11 +14,10 @@ public partial class SnakeGame {
     int _cellSize = 1;
     bool _gameOver;
     DateTime _lastTime = DateTime.Now;
-    TimeSpan _snakeSpeedInMilliseconds = TimeSpan.Zero;
-    int _level = 0;
+    int _level = 1;
+    const double EggSpawnChance = 0.005;
 
     void InitializeGame() {
-        IncreaseLevel(1);
         _cellSize = _canvas.CellSize;
         _eggs.Clear();
         _eggs.Add(new(_cellSize, (int)_canvas.Width, (int)_canvas.Height));
@@ -29,25 +28,26 @@ public partial class SnakeGame {
     }
 
     async ValueTask GameLoopAsync(ElapsedEventArgs elapsedEvent) {
-        var eatenEgg = _eggs.FirstOrDefault(egg => _snake.Ate(egg));
-        if (eatenEgg is not null) {
-            _eggs.Remove(eatenEgg);
-            if (_snake.Tail.Count % 6 == 0)
-                IncreaseLevel(_level + 1);
-        }
-
-        const double eggSpawnChance = 0.005;
-        if (Random.Shared.NextDouble() < eggSpawnChance && _eggs.Count < 5 || _eggs.Count == 0)
-            AddEgg();
-
         var deltaTime = elapsedEvent.SignalTime - _lastTime;
-        _snake.Update(deltaTime.TotalMilliseconds / 1_000);
         _lastTime = elapsedEvent.SignalTime;
 
-        //if (_snake.IsDead()) {
-        //    await GameOver();
-        //    return;
-        //}
+        if (_snake.Head.Interpolation == 1.0f) {
+            _snake.SnakeStep();
+            if (_snake.IsDead()) {
+                await GameOver();
+                return;
+            }
+
+            var eatenEgg = _eggs.FirstOrDefault(egg => _snake.Ate(egg));
+            if (eatenEgg is not null) {
+                _eggs.Remove(eatenEgg);
+                if (_snake.Tail.Count % 6 == 0)
+                    IncreaseLevel(_level + 1);
+            }
+        }
+
+        _snake.Animate(deltaTime.TotalMilliseconds);
+        AddEgg();
 
         await DrawAsync(elapsedEvent);
     }
@@ -61,7 +61,7 @@ public partial class SnakeGame {
         await batch.FillTextAsync($"Score: {_snake.Tail.Count}", _canvas.Width - 55, 10);
         await batch.FillTextAsync($"Level: {_level}", _canvas.Width - 55, 20);
 
-        await batch.ShadowBlurAsync(50);
+        await batch.ShadowBlurAsync(30);
         await batch.ShadowColorAsync("darkgreen");
         await batch.FillStyleAsync("green");
         foreach (var cell in _snake.Tail) {
@@ -76,7 +76,6 @@ public partial class SnakeGame {
         await batch.StrokeStyleAsync("white");
         await batch.StrokeRectAsync(_snake.Head.AnimationPosition.X, _snake.Head.AnimationPosition.Y, _cellSize, _cellSize);
 
-        await batch.ShadowBlurAsync(0);
         await batch.FillStyleAsync("yellow");
         foreach (var egg in _eggs)
             await batch.FillRectAsync(egg.X, egg.Y, _cellSize, _cellSize);
@@ -86,12 +85,13 @@ public partial class SnakeGame {
     }
 
     void AddEgg() {
-        _eggs.Add(new(_cellSize, (int)_canvas.Width, (int)_canvas.Height));
+        if (_eggs.Count < 5 && Random.Shared.NextDouble() < EggSpawnChance || _eggs.Count == 0)
+            _eggs.Add(new(_cellSize, (int)_canvas.Width, (int)_canvas.Height));
     }
 
     void IncreaseLevel(int level) {
         _level = level;
-        _snakeSpeedInMilliseconds = TimeSpan.FromMilliseconds(1_000 / 3 / _level);
+        _snake.IncreaseSnakeSpeed(_level);
     }
 
     void HandleInput(KeyboardEventArgs e) {
@@ -119,7 +119,7 @@ public partial class SnakeGame {
         if (_previousTouch == null)
             return;
 
-        const int sensitivity = 5;
+        const int sensitivity = 10;
         var xDiff = _previousTouch.ClientX - e.Touches[0].ClientX;
         var yDiff = _previousTouch.ClientY - e.Touches[0].ClientY;
 
@@ -146,9 +146,10 @@ public partial class SnakeGame {
     async Task GameOver() {
         _gameOver = true;
         _canvas.Timer.Enabled = false;
+        _level = 1;
 
         await _canvas.Context.FillStyleAsync("red");
-        await _canvas.Context.FontAsync("42px serif");
-        await _canvas.Context.FillTextAsync("Game Over", _canvas.Width / 4, _canvas.Height / 2);
+        await _canvas.Context.FontAsync(_canvas.IsLessThanMediaMinWidth() ? "20px serif" : "42px serif");
+        await _canvas.Context.FillTextAsync("Game Over", _canvas.Width / 2 - 100, _canvas.Height / 2 - 100);
     }
 }

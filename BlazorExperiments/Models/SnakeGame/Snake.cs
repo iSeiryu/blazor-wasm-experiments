@@ -4,7 +4,7 @@ public class Snake(int size, int fieldWidth, int fieldHeight, float snakeSpeed) 
     readonly int _size = size;
     readonly int _xLimit = fieldWidth - size;
     readonly int _yLimit = fieldHeight - size;
-    readonly float _snakeSpeed = snakeSpeed;
+    float _snakeSpeed = snakeSpeed;
     SnakeDirection _currentDirection;
 
     float _xSpeed,
@@ -12,16 +12,14 @@ public class Snake(int size, int fieldWidth, int fieldHeight, float snakeSpeed) 
 
     public BodyPart Head => Tail[^1];
     public List<BodyPart> Tail { get; } = [new(0, 0, 0, 0)];
+    public void IncreaseSnakeSpeed(float increaseBy) => _snakeSpeed += increaseBy;
 
-    public void Update(double deltaTime) {
-        if (Head.Interpolation == 1.0f)
-            SnakeStep();
-
+    public void Animate(double deltaTime) {
         for (var i = 0; i < Tail.Count; i++)
-            Tail[i].Interpolate(deltaTime, _snakeSpeed);
+            Tail[i].Animate(deltaTime, _snakeSpeed);
     }
 
-    void SnakeStep() {
+    public void SnakeStep() {
         for (var i = 0; i < Tail.Count - 1; i++) {
             Tail[i] = Tail[i + 1];
             Tail[i].ResetInterp();
@@ -33,13 +31,13 @@ public class Snake(int size, int fieldWidth, int fieldHeight, float snakeSpeed) 
                        Head.Position.Y);
 
         if (Head.Position.X > _xLimit)
-            Head.Position.X = 0;
+            Head.Position.X = Head.PrevPosition.X = 0;
         else if (Head.Position.X < 0)
-            Head.Position.X = _xLimit;
+            Head.Position.X = Head.PrevPosition.X = _xLimit;
         else if (Head.Position.Y > _yLimit)
-            Head.Position.Y = 0;
+            Head.Position.Y = Head.PrevPosition.Y = 0;
         else if (Head.Position.Y < 0)
-            Head.Position.Y = _yLimit;
+            Head.Position.Y = Head.PrevPosition.Y = _yLimit;
     }
 
     public void SetDirection(SnakeDirection snakeDirection) {

@@ -1,4 +1,5 @@
 using System.Timers;
+using BlazorExperiments.UI.Models;
 using BlazorExperiments.UI.Services;
 using Excubo.Blazor.Canvas;
 using Excubo.Blazor.Canvas.Contexts;
@@ -12,32 +13,17 @@ public partial class CanvasComponent : IAsyncDisposable {
     const int Margin = 50;
     const int MediaMinWidth = 641;
     const int SideBarWidth = 250;
+    const double Interval = 1_000 / 60; // 60 fps
 
     double _fps = 0;
 
     DateTime _lastTimeFpsCalculated = DateTime.Now;
     DateTime _lastTimeCanvasRendered = DateTime.Now;
 
-    async Task SetCanvasSize() {
-        var windowProperties = await BrowserResizeService.GetWindowProperties(JS);
-        var sideBarWidth = windowProperties.Width > MediaMinWidth ? SideBarWidth : 0;
-        var topMenuHeight = sideBarWidth == 0 ? Margin : 0;
-
-        _devicePixelRatio = windowProperties.DevicePixelRatio;
-        Width = (int)(windowProperties.Width - sideBarWidth - Margin);
-        Height = (int)(windowProperties.Height - Margin - topMenuHeight);
-        Width -= Width % CellSize;
-        Height -= Height % CellSize;
-        _style = $"width: {Width}px; height: {Height}px;";
-        StateHasChanged();
-    }
-
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            const int interval = 1_000 / 60; // 60 fps
-
             await SetCanvasSize();
-            Timer = new Timer(interval);
+            Timer = new Timer(Interval);
             Context = await Canvas.GetContext2DAsync(alpha: Alpha);
             await Context.ScaleAsync(_devicePixelRatio, _devicePixelRatio);
             await Container.FocusAsync();
@@ -52,8 +38,24 @@ public partial class CanvasComponent : IAsyncDisposable {
         }
     }
 
+    async Task SetCanvasSize() {
+        WindowProperties = await BrowserResizeService.GetWindowProperties(JS);
+        var sideBarWidth = WindowProperties.Width > MediaMinWidth ? SideBarWidth : 0;
+        var topMenuHeight = sideBarWidth == 0 ? Margin : 0;
+
+        _devicePixelRatio = WindowProperties.DevicePixelRatio;
+        Width = (int)(WindowProperties.Width - sideBarWidth - Margin);
+        Height = (int)(WindowProperties.Height - Margin - topMenuHeight);
+        Width -= Width % CellSize;
+        Height -= Height % CellSize;
+        _style = $"width: {Width}px; height: {Height}px;";
+        StateHasChanged();
+    }
+
+    public WindowProperties WindowProperties { get; private set; } = default!;
+
     public async ValueTask DrawFps(Batch2D batch, ElapsedEventArgs elapsedEvent) {
-        if (elapsedEvent.SignalTime - _lastTimeFpsCalculated > TimeSpan.FromSeconds(1)) {
+        if (elapsedEvent.SignalTime - _lastTimeFpsCalculated > TimeSpan.FromMilliseconds(1_200)) {
             _fps = 1 / (DateTime.Now - _lastTimeCanvasRendered).TotalSeconds;
             _lastTimeFpsCalculated = elapsedEvent.SignalTime;
         }
@@ -64,6 +66,8 @@ public partial class CanvasComponent : IAsyncDisposable {
 
         _lastTimeCanvasRendered = DateTime.Now;
     }
+
+    public bool IsLessThanMediaMinWidth() => WindowProperties.Width < MediaMinWidth;
 
     public async ValueTask DisposeAsync() {
         Timer?.Dispose();
