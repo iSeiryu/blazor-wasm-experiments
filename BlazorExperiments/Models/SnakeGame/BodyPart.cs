@@ -10,7 +10,7 @@ public class BodyPart {
     }
 
     public Vector2 Position;
-    public Vector2 PrevPosition { get; }
+    public Vector2 PrevPosition;
     public Vector2 AnimationPosition { get; private set; }
     public double Interpolation { get; private set; }
 
@@ -20,8 +20,8 @@ public class BodyPart {
     }
 
     // Interpolate between current position towards target position
-    public void Interpolate(double deltaTime, float gameSpeed) {
-        Interpolation += deltaTime * gameSpeed;
+    public void Animate(double deltaTime, float gameSpeed) {
+        Interpolation += deltaTime * gameSpeed / 1_000;
         Interpolation = Math.Min(1.0f, Interpolation); // clamp max value at 1.0
 
         AnimationPosition = Vector2.Lerp(PrevPosition, Position, (float)Interpolation);
