@@ -1,5 +1,6 @@
 ﻿@inject IJSRuntime JS
 
+<img id="snake-img" src="img/snake.png" hidden />
 <CanvasComponent Id="snake"
                  Initialize="InitializeGame"
                  LoopAsync="GameLoopAsync"
@@ -14,4 +15,8 @@ Show FPS <input type="checkbox" @bind="showFps" />
 
 @code {
     bool showFps = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        await JS.InvokeVoidAsync("eval", "snakeImg = document.getElementById('snake-img')");
+    }
 }

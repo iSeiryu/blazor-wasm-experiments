@@ -54,31 +54,31 @@ public partial class SnakeGame {
 
     async ValueTask DrawAsync(ElapsedEventArgs elapsedEvent) {
         await using var batch = _canvas.Context.CreateBatch();
-
         await ClearScreenAsync(batch);
         await batch.FillStyleAsync("white");
         await batch.FontAsync("12px serif");
         await batch.FillTextAsync($"Score: {_snake.Tail.Count}", _canvas.Width - 55, 10);
         await batch.FillTextAsync($"Level: {_level}", _canvas.Width - 55, 20);
 
-        await batch.ShadowBlurAsync(30);
-        await batch.ShadowColorAsync("darkgreen");
-        await batch.FillStyleAsync("green");
-        foreach (var cell in _snake.Tail) {
-            await batch.FillRectAsync(cell.AnimationPosition.X, cell.AnimationPosition.Y, _cellSize, _cellSize);
-            await batch.StrokeStyleAsync("white");
-            await batch.StrokeRectAsync(cell.AnimationPosition.X, cell.AnimationPosition.Y, _cellSize, _cellSize);
+        for (var i = 0; i < _snake.Tail.Count - 1; i++) {
+            var cell = _snake.Tail[i];
+            if (cell.PrevPosition.X != cell.Position.X)
+                await batch.DrawImageAsync("snakeImg", 1 * 64, 0, 64, 64, cell.AnimationPosition.X, cell.AnimationPosition.Y, _cellSize, _cellSize);
+            else
+                await batch.DrawImageAsync("snakeImg", 2 * 64, 1 * 64, 64, 64, cell.AnimationPosition.X, cell.AnimationPosition.Y, _cellSize, _cellSize);
         }
 
-        await batch.ShadowColorAsync("red");
-        await batch.FillStyleAsync("brown");
-        await batch.FillRectAsync(_snake.Head.AnimationPosition.X, _snake.Head.AnimationPosition.Y, _cellSize, _cellSize);
-        await batch.StrokeStyleAsync("white");
-        await batch.StrokeRectAsync(_snake.Head.AnimationPosition.X, _snake.Head.AnimationPosition.Y, _cellSize, _cellSize);
+        if (_snake.Head.PrevPosition.X < _snake.Head.Position.X)
+            await batch.DrawImageAsync("snakeImg", 4 * 64, 0, 64, 64, _snake.Head.AnimationPosition.X, _snake.Head.AnimationPosition.Y, _cellSize, _cellSize);
+        else if (_snake.Head.PrevPosition.X > _snake.Head.Position.X)
+            await batch.DrawImageAsync("snakeImg", 3 * 64, 1 * 64, 64, 64, _snake.Head.AnimationPosition.X, _snake.Head.AnimationPosition.Y, _cellSize, _cellSize);
+        else if (_snake.Head.PrevPosition.Y < _snake.Head.Position.Y)
+            await batch.DrawImageAsync("snakeImg", 4 * 64, 1 * 64, 64, 64, _snake.Head.AnimationPosition.X, _snake.Head.AnimationPosition.Y, _cellSize, _cellSize);
+        else if (_snake.Head.PrevPosition.Y > _snake.Head.Position.Y)
+            await batch.DrawImageAsync("snakeImg", 3 * 64, 0, 64, 64, _snake.Head.AnimationPosition.X, _snake.Head.AnimationPosition.Y, _cellSize, _cellSize);
 
-        await batch.FillStyleAsync("yellow");
         foreach (var egg in _eggs)
-            await batch.FillRectAsync(egg.X, egg.Y, _cellSize, _cellSize);
+            await batch.DrawImageAsync("snakeImg", 0, 3 * 64, 64, 64, egg.X, egg.Y, _cellSize, _cellSize);
 
         if (showFps)
             await _canvas.DrawFps(batch, elapsedEvent);
