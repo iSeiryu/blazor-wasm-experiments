@@ -1,80 +1,83 @@
-﻿namespace BlazorExperiments.UI.Models.SnakeGame;
+﻿using System.Numerics;
+using System.Runtime.CompilerServices;
 
-public class Snake(int size, int fieldWidth, int fieldHeight, float snakeSpeed) {
-    readonly int _size = size;
-    readonly int _xLimit = fieldWidth - size;
-    readonly int _yLimit = fieldHeight - size;
-    float _snakeSpeed = snakeSpeed;
-    SnakeDirection _currentDirection;
+namespace BlazorExperiments.UI.Models.SnakeGame;
+
+public class Snake {
+    readonly int _size;
+    readonly int _xLimit;
+    readonly int _yLimit;
+    float _snakeSpeed;
+    Vector2 _currentDirection;
 
     float _xSpeed,
           _ySpeed;
 
-    public BodyPart Head => Tail[^1];
-    public List<BodyPart> Tail { get; } = [new(0, 0, 0, 0)];
-    public void IncreaseSnakeSpeed(float increaseBy) => _snakeSpeed += increaseBy;
+    public Snake(int size, int fieldWidth, int fieldHeight, float snakeSpeed) {
+        _size = size;
+        _xLimit = fieldWidth - size;
+        _yLimit = fieldHeight - size;
+        _snakeSpeed = snakeSpeed;
+        _currentDirection = Vector2.UnitX; //right
+        _xSpeed = _size;
+
+        var head = new BodyPart(_size * 5, _size, _currentDirection);
+        Body = [head];
+
+        for (var i = 0; i < 7; i++) {
+            var part = new BodyPart(_size * 5, _size, _currentDirection);
+            Body.Add(part);
+
+            part.Position.X = Tail.Position.X - _size;
+            part.PrevPosition = new Vector2(part.Position.X, part.Position.Y);
+            part.Direction = _currentDirection;
+        }
+    }
+
+    public BodyPart Head => Body[^1];
+    public BodyPart Tail => Body[0];
+    public List<BodyPart> Body { get; }
+    public void IncreaseSnakeSpeed() => _snakeSpeed += 1;
 
     public void Animate(double deltaTime) {
-        for (var i = 0; i < Tail.Count; i++)
-            Tail[i].Animate(deltaTime, _snakeSpeed);
+        for (var i = 0; i < Body.Count; i++) {
+            Body[i].Animate(deltaTime, _snakeSpeed);
+        }
     }
 
     public void SnakeStep() {
-        for (var i = 0; i < Tail.Count - 1; i++) {
-            Tail[i] = Tail[i + 1];
-            Tail[i].ResetInterp();
+        for (var i = 0; i < Body.Count - 1; i++) {
+            Body[i] = Body[i + 1];
+            Body[i].ResetInterp();
         }
 
-        Tail[^1] = new(Head.Position.X + _xSpeed,
+        Body[^1] = new(Head.Position.X + _xSpeed,
                        Head.Position.Y + _ySpeed,
-                       Head.Position.X,
-                       Head.Position.Y);
-
-        if (Head.Position.X > _xLimit)
-            Head.Position.X = Head.PrevPosition.X = 0;
-        else if (Head.Position.X < 0)
-            Head.Position.X = Head.PrevPosition.X = _xLimit;
-        else if (Head.Position.Y > _yLimit)
-            Head.Position.Y = Head.PrevPosition.Y = 0;
-        else if (Head.Position.Y < 0)
-            Head.Position.Y = Head.PrevPosition.Y = _yLimit;
+                       _currentDirection);
     }
 
-    public void SetDirection(SnakeDirection snakeDirection) {
+    public void SetDirection(Vector2 snakeDirection) {
         //check if the new direction is the opposite of the current direction
-        if (Tail.Count > 1 &&
-            (
-                snakeDirection == SnakeDirection.Up && _currentDirection == SnakeDirection.Down ||
-                snakeDirection == SnakeDirection.Down && _currentDirection == SnakeDirection.Up ||
-                snakeDirection == SnakeDirection.Left && _currentDirection == SnakeDirection.Right ||
-                snakeDirection == SnakeDirection.Right && _currentDirection == SnakeDirection.Left)
-            )
-            return;
+        //if (
+        //    Body.Count > 1 &&
+        //       (
+        //        snakeDirection == SnakeDirection.Up && _currentDirection == Vector2.UnitY ||
+        //        snakeDirection == SnakeDirection.Down && _currentDirection == SnakeDirection.Up ||
+        //        snakeDirection == SnakeDirection.Left && _currentDirection == SnakeDirection.Right ||
+        //        snakeDirection == SnakeDirection.Right && _currentDirection == SnakeDirection.Left
+        //       ) ||
+        //    snakeDirection == _currentDirection
+        //   )
+        //    return;
 
         _currentDirection = snakeDirection;
-        switch (snakeDirection) {
-            case SnakeDirection.Up:
-                _xSpeed = 0;
-                _ySpeed = -_size;
-                break;
-            case SnakeDirection.Down:
-                _xSpeed = 0;
-                _ySpeed = _size;
-                break;
-            case SnakeDirection.Left:
-                _xSpeed = -_size;
-                _ySpeed = 0;
-                break;
-            case SnakeDirection.Right:
-                _xSpeed = _size;
-                _ySpeed = 0;
-                break;
-        }
+        _xSpeed = _currentDirection.X * _size;
+        _ySpeed = _currentDirection.Y * _size;
     }
 
     public bool Ate(Egg egg) {
         if (egg.X == Head.Position.X && egg.Y == Head.Position.Y) {
-            Tail.Add(new(Head.Position.X, Head.Position.Y, Head.Position.X, Head.Position.Y));
+            Body.Insert(0, new(Tail.PrevPosition.X, Tail.PrevPosition.Y, Tail.Direction));
 
             return true;
         }
@@ -83,9 +86,12 @@ public class Snake(int size, int fieldWidth, int fieldHeight, float snakeSpeed) 
     }
 
     public bool IsDead() {
-        for (var i = 0; i < Tail.Count - 1; i++)
-            if (Head.Position.X == Tail[i].Position.X && Head.Position.Y == Tail[i].Position.Y)
+        for (var i = 0; i < Body.Count - 1; i++) {
+            if (Head.Position.X < 0 || Head.Position.X > _xLimit || Head.Position.Y < 0 || Head.Position.Y > _yLimit)
                 return true;
+            if (Head.Position.X == Body[i].Position.X && Head.Position.Y == Body[i].Position.Y)
+                return true;
+        }
 
         return false;
     }

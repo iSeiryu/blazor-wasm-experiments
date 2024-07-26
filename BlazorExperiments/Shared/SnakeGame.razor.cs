@@ -1,4 +1,5 @@
-﻿using System.Timers;
+﻿using System.Numerics;
+using System.Timers;
 using BlazorExperiments.UI.Models.SnakeGame;
 using Excubo.Blazor.Canvas.Contexts;
 using Microsoft.AspNetCore.Components.Web;
@@ -16,12 +17,15 @@ public partial class SnakeGame {
     DateTime _lastTime = DateTime.Now;
     int _level = 1;
     const double EggSpawnChance = 0.005;
+    const int SpriteSize = 64;
+    TimeSpan _snakeSpeedInMilliseconds = TimeSpan.FromMilliseconds(100);
 
     void InitializeGame() {
         _cellSize = _canvas.CellSize;
         _eggs.Clear();
         _eggs.Add(new(_cellSize, (int)_canvas.Width, (int)_canvas.Height));
         _snake = new Snake(_cellSize, (int)_canvas.Width, (int)_canvas.Height, 5);
+        _snake.SetDirection(new Vector2(1, 0));
         _canvas.Timer.Enabled = true;
         _gameOver = false;
         StateHasChanged();
@@ -32,20 +36,18 @@ public partial class SnakeGame {
         _lastTime = elapsedEvent.SignalTime;
 
         if (_snake.Head.Interpolation == 1.0f) {
-            _snake.SnakeStep();
-            if (_snake.IsDead()) {
-                await GameOver();
-                return;
-            }
-
             var eatenEgg = _eggs.FirstOrDefault(egg => _snake.Ate(egg));
             if (eatenEgg is not null) {
                 _eggs.Remove(eatenEgg);
-                if (_snake.Tail.Count % 6 == 0)
+                if (_snake.Body.Count % 6 == 0)
                     IncreaseLevel(_level + 1);
             }
+            _snake.SnakeStep();
+            //if (_snake.IsDead()) {
+            //    await GameOver();
+            //    return;
+            //}
         }
-
         _snake.Animate(deltaTime.TotalMilliseconds);
         AddEgg();
 
@@ -55,43 +57,124 @@ public partial class SnakeGame {
     async ValueTask DrawAsync(ElapsedEventArgs elapsedEvent) {
         await using var batch = _canvas.Context.CreateBatch();
         await ClearScreenAsync(batch);
-        await batch.FillStyleAsync("white");
-        await batch.FontAsync("12px serif");
-        await batch.FillTextAsync($"Score: {_snake.Tail.Count}", _canvas.Width - 55, 10);
-        await batch.FillTextAsync($"Level: {_level}", _canvas.Width - 55, 20);
-
-        for (var i = 0; i < _snake.Tail.Count - 1; i++) {
-            var cell = _snake.Tail[i];
-            if (cell.PrevPosition.X != cell.Position.X)
-                await batch.DrawImageAsync("snakeImg", 1 * 64, 0, 64, 64, cell.AnimationPosition.X, cell.AnimationPosition.Y, _cellSize, _cellSize);
-            else
-                await batch.DrawImageAsync("snakeImg", 2 * 64, 1 * 64, 64, 64, cell.AnimationPosition.X, cell.AnimationPosition.Y, _cellSize, _cellSize);
-        }
-
-        if (_snake.Head.PrevPosition.X < _snake.Head.Position.X)
-            await batch.DrawImageAsync("snakeImg", 4 * 64, 0, 64, 64, _snake.Head.AnimationPosition.X, _snake.Head.AnimationPosition.Y, _cellSize, _cellSize);
-        else if (_snake.Head.PrevPosition.X > _snake.Head.Position.X)
-            await batch.DrawImageAsync("snakeImg", 3 * 64, 1 * 64, 64, 64, _snake.Head.AnimationPosition.X, _snake.Head.AnimationPosition.Y, _cellSize, _cellSize);
-        else if (_snake.Head.PrevPosition.Y < _snake.Head.Position.Y)
-            await batch.DrawImageAsync("snakeImg", 4 * 64, 1 * 64, 64, 64, _snake.Head.AnimationPosition.X, _snake.Head.AnimationPosition.Y, _cellSize, _cellSize);
-        else if (_snake.Head.PrevPosition.Y > _snake.Head.Position.Y)
-            await batch.DrawImageAsync("snakeImg", 3 * 64, 0, 64, 64, _snake.Head.AnimationPosition.X, _snake.Head.AnimationPosition.Y, _cellSize, _cellSize);
+        await DrawText(batch);
+        await DrawHead(batch);
+        await DrawBody(batch);
+        await DrawTail(batch);
 
         foreach (var egg in _eggs)
-            await batch.DrawImageAsync("snakeImg", 0, 3 * 64, 64, 64, egg.X, egg.Y, _cellSize, _cellSize);
+            await DrawSprite(batch, 0, 3 * SpriteSize, egg.X, egg.Y);
 
         if (showFps)
             await _canvas.DrawFps(batch, elapsedEvent);
     }
 
+    async ValueTask DrawText(Batch2D batch) {
+        await batch.FillStyleAsync("white");
+        await batch.FontAsync("12px serif");
+        await batch.FillTextAsync($"Score: {_snake.Body.Count}", _canvas.Width - 55, 10);
+        await batch.FillTextAsync($"Level: {_level}", _canvas.Width - 55, 20);
+    }
+
+    async ValueTask DrawHead(Batch2D batch) {
+        int spriteX, spriteY;
+
+        (spriteX, spriteY) = (4, 0);
+        var part = _snake.Head;
+        var radius = _cellSize * 0.4;
+        await batch.SaveAsync();
+        await batch.TranslateAsync(part.AnimationPosition.X, part.AnimationPosition.Y);
+
+        var targetAngle = Math.Atan2(part.Direction.Y, part.Direction.X);
+        part.Rotation = part.AngleLerp(part.Rotation, targetAngle, 0.2);
+
+        await batch.RotateAsync(part.Rotation);
+        // Draw the image
+        await batch.DrawImageAsync(
+          "snakeImg",
+          spriteX,
+          spriteY,
+          SpriteSize,
+          SpriteSize,
+          -radius, // Note the change here
+          -radius, // Note the change here
+          radius * 2,
+          radius * 2
+        );
+
+        await batch.RestoreAsync();
+
+
+    }
+
+    async ValueTask DrawBody(Batch2D batch) {
+        for (var i = 1; i < _snake.Body.Count - 1; i++) {
+            int tx = 1, ty = 0;
+            var curr = _snake.Body[i];
+            var prev = _snake.Body[i - 1];
+            var next = _snake.Body[i + 1];
+
+            if (prev.Position.X < curr.Position.X && next.Position.X > curr.Position.X || next.Position.X < curr.Position.X && prev.Position.X > curr.Position.X) {
+                // Horizontal Left-Right
+                tx = 1; ty = 0;
+            }
+            else if (prev.Position.Y < curr.Position.Y && next.Position.Y > curr.Position.Y || next.Position.Y < curr.Position.Y && prev.Position.Y > curr.Position.Y) {
+                // Vertical Up-Down
+                tx = 2; ty = 1;
+            }
+
+            await DrawSprite(batch, tx * SpriteSize, ty * SpriteSize, curr.AnimationPosition.X, curr.AnimationPosition.Y);
+        }
+    }
+
+    async ValueTask DrawTail(Batch2D batch) {
+        int spriteX = 4, spriteY = 2;
+        var next = _snake.Body[1];
+
+        if (next.Position.Y < _snake.Tail.Position.Y) {
+            // Up
+            (spriteX, spriteY) = (3, 2);
+        }
+        else if (next.Position.X > _snake.Tail.Position.X) {
+            // Right
+            (spriteX, spriteY) = (4, 2);
+        }
+        else if (next.Position.Y > _snake.Tail.Position.Y) {
+            // Down
+            (spriteX, spriteY) = (4, 3);
+        }
+        else if (next.Position.X < _snake.Tail.Position.X) {
+            // Left
+            (spriteX, spriteY) = (3, 3);
+        }
+
+        await DrawSprite(batch,
+                         spriteX * SpriteSize,
+                         spriteY * SpriteSize,
+                         _snake.Tail.AnimationPosition.X,
+                         _snake.Tail.AnimationPosition.Y);
+    }
+
+    async ValueTask DrawSprite(Batch2D batch, int spriteX, int spriteY, double cellX, double cellY) {
+        await batch.DrawImageAsync("snakeImg",
+                                   spriteX,
+                                   spriteY,
+                                   SpriteSize,
+                                   SpriteSize,
+                                   cellX,
+                                   cellY,
+                                   _cellSize + 1,
+                                   _cellSize + 1);
+    }
+
     void AddEgg() {
-        if (_eggs.Count < 5 && Random.Shared.NextDouble() < EggSpawnChance || _eggs.Count == 0)
+        if (_eggs.Count < 3 && Random.Shared.NextDouble() < EggSpawnChance || _eggs.Count == 0)
             _eggs.Add(new(_cellSize, (int)_canvas.Width, (int)_canvas.Height));
     }
 
     void IncreaseLevel(int level) {
         _level = level;
-        _snake.IncreaseSnakeSpeed(_level);
+        _snake.IncreaseSnakeSpeed();
     }
 
     void HandleInput(KeyboardEventArgs e) {
@@ -99,13 +182,13 @@ public partial class SnakeGame {
             InitializeGame();
 
         else if (e.Code == "ArrowDown")
-            _snake.SetDirection(SnakeDirection.Down);
+            _snake.SetDirection(new Vector2(0, 1));
         else if (e.Code == "ArrowUp")
-            _snake.SetDirection(SnakeDirection.Up);
+            _snake.SetDirection(new Vector2(0, -1));
         else if (e.Code == "ArrowLeft")
-            _snake.SetDirection(SnakeDirection.Left);
+            _snake.SetDirection(new Vector2(-1, 0));
         else if (e.Code == "ArrowRight")
-            _snake.SetDirection(SnakeDirection.Right);
+            _snake.SetDirection(new Vector2(1, 0));
     }
 
     void HandleTouchStart(TouchEventArgs e) {
@@ -127,12 +210,12 @@ public partial class SnakeGame {
             return;
 
         // most significant
-        if (Math.Abs(xDiff) > Math.Abs(yDiff)) {
-            _snake.SetDirection(xDiff > 0 ? SnakeDirection.Left : SnakeDirection.Right);
-        }
-        else {
-            _snake.SetDirection(yDiff > 0 ? SnakeDirection.Up : SnakeDirection.Down);
-        }
+        //if (Math.Abs(xDiff) > Math.Abs(yDiff)) {
+        //    _snake.SetDirection(xDiff > 0 ? SnakeDirection.Left : SnakeDirection.Right);
+        //}
+        //else {
+        //    _snake.SetDirection(yDiff > 0 ? SnakeDirection.Up : SnakeDirection.Down);
+        //}
 
         _previousTouch = e.Touches[^1];
     }

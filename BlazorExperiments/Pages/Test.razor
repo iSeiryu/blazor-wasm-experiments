@@ -1,0 +1,17 @@
+﻿@page "/test"
+@using Excubo.Blazor.Canvas
+@using Excubo.Blazor.Canvas.Contexts
+@using BlazorExperiments.UI.Shared
+@using System.Timers
+
+@inject IJSRuntime JS
+
+<img id="snake-img" src="img/snake.png" hidden />
+
+<CanvasComponent Id="hexagon"
+                 Initialize="Nothing"
+                 LoopAsync="Loop"
+                 @ref="_canvas">
+</CanvasComponent>
+
+
