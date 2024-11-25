@@ -25,20 +25,20 @@ jobs:
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.x.x
+          dotnet-version: 9.x.x
 
       # Runs a set of commands using the runners shell
       - name: Install WASM tools
         run: dotnet workload install wasm-tools
       - name: Publish .NET Project
         run: dotnet publish BlazorExperiments/BlazorExperiments.UI.csproj -c Release -o release --nologo
-      - name: Publish .NET Project
+      - name: Publish .NET Project with AOT
         run: dotnet publish BlazorExperiments/BlazorExperiments.UI.csproj -c Release -p:RunAOTCompilation=true -p:WasmStripILAfterAOT=true -o release-aot --nologo
-      - name: test
+      - name: check current directory
         run: ls -la release-aot/wwwroot && pwd 
       - name: Fix base path for Blazor AOT app
         run: sed -i 's/<base href="\/blazor\/" \/>/<base href="\/blazor-aot\/" \/>/g' release-aot/wwwroot/index.html
-      - name: test
+      - name: check index.html
         run: cat release-aot/wwwroot/index.html
 
       - name: Commit wwwroot to GitHub Pages
