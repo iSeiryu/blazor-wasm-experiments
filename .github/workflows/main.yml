@@ -42,7 +42,7 @@ jobs:
         run: cat release-aot/wwwroot/index.html
 
       - name: Commit wwwroot to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4.5.0
+        uses: JamesIves/github-pages-deploy-action@v4.6.9
         with:
           branch: main
           folder: release/wwwroot
@@ -51,7 +51,7 @@ jobs:
           token: ${{ secrets.DEPLOY_TOKEN }}
       
       - name: Commit wwwroot AOT to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4.5.0
+        uses: JamesIves/github-pages-deploy-action@v4.6.9
         with:
           branch: main
           folder: release-aot/wwwroot
