@@ -138,7 +138,7 @@ public partial class GameOfLife {
         }
     }
 
-    public async ValueTask DrawButton(bool mouseOver = false) {
+    async ValueTask DrawButton(bool mouseOver = false) {
         await using var batch = _canvas.Context.CreateBatch();
         await batch.FillStyleAsync(mouseOver ? "green" : "blue");
         await batch.FillRectAsync(_button.X, _button.Y, _button.Width, _button.Height);

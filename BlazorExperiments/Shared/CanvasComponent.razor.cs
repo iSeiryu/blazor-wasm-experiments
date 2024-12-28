@@ -1,7 +1,6 @@
 using System.Timers;
 using BlazorExperiments.UI.Models;
 using BlazorExperiments.UI.Services;
-using Excubo.Blazor.Canvas;
 using Excubo.Blazor.Canvas.Contexts;
 using Microsoft.AspNetCore.Components;
 using Timer = System.Timers.Timer;
@@ -26,15 +25,16 @@ public partial class CanvasComponent : IAsyncDisposable {
             Timer = new Timer(Interval);
             Context = await Canvas.GetContext2DAsync(alpha: Alpha);
             await Context.ScaleAsync(_devicePixelRatio, _devicePixelRatio);
-            await Container.FocusAsync();
 
             if (Initialize != null)
                 Initialize();
-            else
+            else if(InitializeAsync != null)
                 await InitializeAsync();
 
             Timer.Elapsed += async (_, elapsedEvent) => await LoopAsync(elapsedEvent);
             Timer.Enabled = true;
+            
+            await Container.FocusAsync();
         }
     }
 
@@ -46,6 +46,8 @@ public partial class CanvasComponent : IAsyncDisposable {
         _devicePixelRatio = WindowProperties.DevicePixelRatio;
         Width = (int)(WindowProperties.Width - sideBarWidth - Margin);
         Height = (int)(WindowProperties.Height - Margin - topMenuHeight);
+        CellSize = (int)Width / CellsPerRow;
+        Console.WriteLine("settings canvas size: " + CellsPerRow);
         Width -= Width % CellSize;
         Height -= Height % CellSize;
         _style = $"width: {Width}px; height: {Height}px;";

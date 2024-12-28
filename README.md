@@ -11,5 +11,5 @@ cd /repo/folder
 dotnet workload install wasm-tools
 dotnet workload restore
 dotnet build
-dotnet run --project .\BlazorExperiments\BlazorExperiments.UI.csproj
+dotnet run --project BlazorExperiments/BlazorExperiments.UI.csproj
 ```

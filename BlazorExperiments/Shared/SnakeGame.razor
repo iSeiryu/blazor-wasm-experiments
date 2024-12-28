@@ -7,15 +7,33 @@
                  HandleKeyDown="HandleInput"
                  HandleTouchStart="HandleTouchStart"
                  HandleTouchMove="HandleTouchMove"
-                 CellSize="20"
                  @ref="_canvas">
 </CanvasComponent>
 
-Show FPS <input type="checkbox" @bind="showFps" />
+Show FPS <input type="checkbox" @bind="_showFps" />
+
+<div class="row">
+    <p>Canvas Width: @_canvas?.Width</p>
+    <p>Canvas Height: @_canvas?.Height</p>
+    <p>Cells Per Row: @_canvas?.CellsPerRow</p>
+    <p>Cell Size: @_canvas?.CellSize</p>
+</div>
 
 @code {
-    bool showFps = false;
+    bool _showFps = false;
 
+    protected override async Task OnInitializedAsync()
+    {
+        var isMobile = await JS.InvokeAsync<bool>("isMobile");
+        Console.WriteLine("setting CellsPerRow: " + isMobile);
+        _canvas.CellsPerRow = 30;
+        if (isMobile)
+        {
+            _canvas.CellsPerRow = 10;
+            Console.WriteLine("set CellsPerRow: " + _canvas.CellsPerRow);
+        }
+    }
+    
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         await JS.InvokeVoidAsync("eval", "snakeImg = document.getElementById('snake-img')");
     }

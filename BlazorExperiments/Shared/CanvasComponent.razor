@@ -5,17 +5,18 @@
 
 <div id="canvas-container"
      tabindex="0"
-     style="width: @(Width + 4)px; height: @(Height + 4)px !important; display: grid; align-items: center; justify-content: center;"
+     style="width: @(Width + 4)px; height: @(Height + 4)px !important; display: grid; align-items: center; justify-content: center;touch-action: none;"
      @onkeydown="HandleKeyDown"
+     @onkeydown:preventDefault="true"
      @onmouseup="@(async (mouseEventArgs) => await HandleMouseUp(mouseEventArgs))"
      @onmousemove="@(async (mouseEventArgs) => await HandleMouseMove(mouseEventArgs))"
      @ontouchstart="HandleTouchStart"
      @ontouchmove="HandleTouchMove"
      @ref="Container">
     <Canvas id="@Id"
-            width=@(Width * _devicePixelRatio)
-            height=@(Height * _devicePixelRatio)
-            style=@_style
+            width="@(Width * _devicePixelRatio)"
+            height="@(Height * _devicePixelRatio)"
+            style="@_style"
             @ref="Canvas"></Canvas>
 </div>
 
@@ -24,10 +25,10 @@
     public string Id { get; set; } = "some_canvas";
 
     [Parameter]
-    public Func<Task> InitializeAsync { get; set; } = null!;
+    public Func<Task>? InitializeAsync { get; set; }
 
     [Parameter]
-    public Action Initialize { get; set; } = null!;
+    public Action? Initialize { get; set; }
 
     [Parameter, EditorRequired]
     public Func<ElapsedEventArgs, ValueTask> LoopAsync { get; set; } = null!;
@@ -47,7 +48,9 @@
     public bool Alpha { get; set; }
 
     [Parameter]
-    public int CellSize { get; set; } = 1;
+    public int CellsPerRow { get; set; } = 10;
+    
+    public int CellSize { get; private set; }
 
     public ElementReference Container { get; private set; }
     public Canvas Canvas { get; private set; } = null!;

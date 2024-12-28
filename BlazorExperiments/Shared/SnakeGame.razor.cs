@@ -80,7 +80,7 @@ public partial class SnakeGame {
         foreach (var egg in _eggs)
             await batch.DrawImageAsync("snakeImg", 0, 3 * 64, 64, 64, egg.X, egg.Y, _cellSize, _cellSize);
 
-        if (showFps)
+        if (_showFps)
             await _canvas.DrawFps(batch, elapsedEvent);
     }
 
@@ -98,7 +98,7 @@ public partial class SnakeGame {
         if (_gameOver)
             InitializeGame();
 
-        else if (e.Code == "ArrowDown")
+        if (e.Code == "ArrowDown")
             _snake.SetDirection(SnakeDirection.Down);
         else if (e.Code == "ArrowUp")
             _snake.SetDirection(SnakeDirection.Up);
