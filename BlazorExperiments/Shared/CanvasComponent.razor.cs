@@ -28,12 +28,12 @@ public partial class CanvasComponent : IAsyncDisposable {
 
             if (Initialize != null)
                 Initialize();
-            else if(InitializeAsync != null)
+            else if (InitializeAsync != null)
                 await InitializeAsync();
 
             Timer.Elapsed += async (_, elapsedEvent) => await LoopAsync(elapsedEvent);
             Timer.Enabled = true;
-            
+
             await Container.FocusAsync();
         }
     }
@@ -47,7 +47,6 @@ public partial class CanvasComponent : IAsyncDisposable {
         Width = (int)(WindowProperties.Width - sideBarWidth - Margin);
         Height = (int)(WindowProperties.Height - Margin - topMenuHeight);
         CellSize = (int)Width / CellsPerRow;
-        Console.WriteLine("settings canvas size: " + CellsPerRow);
         Width -= Width % CellSize;
         Height -= Height % CellSize;
         _style = $"width: {Width}px; height: {Height}px;";

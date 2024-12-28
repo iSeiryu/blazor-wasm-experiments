@@ -25,16 +25,15 @@ Show FPS <input type="checkbox" @bind="_showFps" />
     protected override async Task OnInitializedAsync()
     {
         var isMobile = await JS.InvokeAsync<bool>("isMobile");
-        Console.WriteLine("setting CellsPerRow: " + isMobile);
         _canvas.CellsPerRow = 30;
         if (isMobile)
         {
             _canvas.CellsPerRow = 10;
-            Console.WriteLine("set CellsPerRow: " + _canvas.CellsPerRow);
         }
     }
-    
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
         await JS.InvokeVoidAsync("eval", "snakeImg = document.getElementById('snake-img')");
     }
 }
