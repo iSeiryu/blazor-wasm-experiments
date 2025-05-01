@@ -1,6 +1,9 @@
-﻿<CanvasComponent Id="tetris"
+﻿@inject IJSRuntime JS
+
+<CanvasComponent Id="tetris"
                  Initialize="Initialize"
-                 LoopAsync="DrawAsync"
+                 LoopAsync="GameLoopAsync"
                  HandleKeyDown="Move"
+                 HandleMouseUp="HandleMouseUp"
                  @ref="_canvas">
 </CanvasComponent>
