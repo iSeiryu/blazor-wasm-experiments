@@ -1,5 +1,6 @@
 ﻿using System.Timers;
 using Excubo.Blazor.Canvas;
+using Excubo.Blazor.Canvas.Contexts;
 using Microsoft.AspNetCore.Components.Web;
 
 namespace BlazorExperiments.UI.Shared;
@@ -51,6 +52,8 @@ public partial class TetrisGame {
     const int ButtonHeight = 40;
     const int StartButtonX = MainAreaWidth + (SidebarWidth - ButtonWidth) / 2;
     const int StartButtonY = CanvasHeight - 60;
+    const int EndButtonX = StartButtonX + ButtonWidth;
+    const int EndButtonY = StartButtonY + ButtonHeight;
 
     // Game variables
     int[][] _board;
@@ -92,7 +95,6 @@ public partial class TetrisGame {
         _paused = false;
         _showGameOver = false;
 
-        // Create first piece and next piece
         CreatePiece();
         CreateNextPiece();
 
@@ -126,129 +128,125 @@ public partial class TetrisGame {
     void CreateBoard()
     {
         _board = new int[Rows][];
-        for (int i = 0; i < Rows; i++)
+        for (var i = 0; i < Rows; i++)
         {
             _board[i] = new int[Cols];
         }
     }
     
-    async Task DrawAllAsync()
-    {
+    async ValueTask DrawAllAsync() {
+        await using var batch = _canvas.Context.CreateBatch();
         // Clear the entire canvas
-        await _canvas.Context.ClearRectAsync(0, 0, CanvasWidth, CanvasHeight);
+        await batch.ClearRectAsync(0, 0, CanvasWidth, CanvasHeight);
 
         // Draw main game area background
-        await _canvas.Context.FillStyleAsync("#111");
-        await _canvas.Context.FillRectAsync(0, 0, MainAreaWidth, MainAreaHeight);
+        await batch.FillStyleAsync("#111");
+        await batch.FillRectAsync(0, 0, MainAreaWidth, MainAreaHeight);
 
         // Draw sidebar background
-        await _canvas.Context.FillStyleAsync("#222");
-        await _canvas.Context.FillRectAsync(MainAreaWidth, 0, SidebarWidth, CanvasHeight);
+        await batch.FillStyleAsync("#222");
+        await batch.FillRectAsync(MainAreaWidth, 0, SidebarWidth, CanvasHeight);
 
         // Draw game board and current piece
-        await DrawBoardAsync();
+        await DrawBoardAsync(batch);
         if (_gameActive)
         {
-            await DrawPieceAsync();
+            await DrawPieceAsync(batch);
         }
 
         // Draw sidebar content
-        await DrawNextPieceAreaAsync();
-        await DrawScorePanelAsync();
-        await DrawControlsPanelAsync();
-        await DrawStartButtonAsync();
+        await DrawNextPieceAreaAsync(batch);
+        await DrawScorePanelAsync(batch);
+        await DrawControlsPanelAsync(batch);
+        await DrawStartButtonAsync(batch);
 
         // Draw overlay screens
         if (_showGameOver)
         {
-            await DrawGameOverScreenAsync();
+            await DrawGameOverScreenAsync(batch);
         }
         else if (_paused)
         {
-            await DrawPausedScreenAsync();
+            await DrawPausedScreenAsync(batch);
         }
     }
 
-    // Draw game board
-    async Task DrawBoardAsync()
+    async ValueTask DrawBoardAsync(Batch2D batch)
     {
-        for (int row = 0; row < Rows; row++)
+        for (var row = 0; row < Rows; row++)
         {
-            for (int col = 0; col < Cols; col++)
+            for (var col = 0; col < Cols; col++)
             {
-                int blockValue = _board[row][col];
-                await DrawBlockAsync(col, row, blockValue);
+                var blockValue = _board[row][col];
+                await DrawBlockAsync(col, row, blockValue, batch);
             }
         }
     }
 
-    // Draw a single block
-    async Task DrawBlockAsync(int x, int y, int type)
+    async ValueTask DrawBlockAsync(int x, int y, int type, Batch2D batch)
     {
         if (type == 0)
         {
             // Draw grid for empty blocks
-            await _canvas.Context.FillStyleAsync("#111");
-            await _canvas.Context.FillRectAsync(x * BlockSize, y * BlockSize, BlockSize, BlockSize);
-            await _canvas.Context.StrokeStyleAsync("#333");
-            await _canvas.Context.LineWidthAsync(1);
-            await _canvas.Context.StrokeRectAsync(x * BlockSize, y * BlockSize, BlockSize, BlockSize);
+            await batch.FillStyleAsync("#111");
+            await batch.FillRectAsync(x * BlockSize, y * BlockSize, BlockSize, BlockSize);
+            await batch.StrokeStyleAsync("#333");
+            await batch.LineWidthAsync(1);
+            await batch.StrokeRectAsync(x * BlockSize, y * BlockSize, BlockSize, BlockSize);
         }
         else
         {
             // Draw colored blocks
-            await _canvas.Context.FillStyleAsync(_colors[type]);
-            await _canvas.Context.FillRectAsync(x * BlockSize, y * BlockSize, BlockSize, BlockSize);
+            await batch.FillStyleAsync(_colors[type]);
+            await batch.FillRectAsync(x * BlockSize, y * BlockSize, BlockSize, BlockSize);
 
             // Draw highlight
-            await _canvas.Context.FillStyleAsync("rgba(255, 255, 255, 0.2)");
-            await _canvas.Context.FillRectAsync(x * BlockSize, y * BlockSize, BlockSize, 5);
-            await _canvas.Context.FillRectAsync(x * BlockSize, y * BlockSize, 5, BlockSize);
+            await batch.FillStyleAsync("rgba(255, 255, 255, 0.2)");
+            await batch.FillRectAsync(x * BlockSize, y * BlockSize, BlockSize, 5);
+            await batch.FillRectAsync(x * BlockSize, y * BlockSize, 5, BlockSize);
 
             // Draw shadow
-            await _canvas.Context.FillStyleAsync("rgba(0, 0, 0, 0.4)");
-            await _canvas.Context.FillRectAsync(x * BlockSize + BlockSize - 5, y * BlockSize, 5, BlockSize);
-            await _canvas.Context.FillRectAsync(x * BlockSize, y * BlockSize + BlockSize - 5, BlockSize, 5);
+            await batch.FillStyleAsync("rgba(0, 0, 0, 0.4)");
+            await batch.FillRectAsync(x * BlockSize + BlockSize - 5, y * BlockSize, 5, BlockSize);
+            await batch.FillRectAsync(x * BlockSize, y * BlockSize + BlockSize - 5, BlockSize, 5);
 
             // Draw border
-            await _canvas.Context.StrokeStyleAsync("black");
-            await _canvas.Context.LineWidthAsync(1);
-            await _canvas.Context.StrokeRectAsync(x * BlockSize, y * BlockSize, BlockSize, BlockSize);
+            await batch.StrokeStyleAsync("black");
+            await batch.LineWidthAsync(1);
+            await batch.StrokeRectAsync(x * BlockSize, y * BlockSize, BlockSize, BlockSize);
         }
     }
 
-    // Draw current piece
-    async Task DrawPieceAsync()
+    async ValueTask DrawPieceAsync(Batch2D batch)
     {
         if (_currentPiece == null) return;
 
         var piece = _currentPiece.Shape;
         var type = _currentPiece.Type;
 
-        for (int row = 0; row < piece.Length; row++)
+        for (var row = 0; row < piece.Length; row++)
         {
-            for (int col = 0; col < piece[row].Length; col++)
+            for (var col = 0; col < piece[row].Length; col++)
             {
                 if (piece[row][col] != 0)
                 {
-                    await DrawBlockAsync(_currentPiece.X + col, _currentPiece.Y + row, type);
+                    await DrawBlockAsync(_currentPiece.X + col, _currentPiece.Y + row, type, batch);
                 }
             }
         }
     }
 
-    // Draw next piece area
-    async Task DrawNextPieceAreaAsync()
+    async ValueTask DrawNextPieceAreaAsync(Batch2D batch)
     {
         // Draw next piece area header
-        await _canvas.Context.FillStyleAsync("white");
-        await _canvas.Context.FontAsync("18px Arial");
-        await _canvas.Context.TextAlignAsync(TextAlign.Center);
-        await _canvas.Context.FillTextAsync("NEXT PIECE", MainAreaWidth + SidebarWidth / 2, 20);
+        await batch.FillStyleAsync("white");
+        await batch.FontAsync("18px Arial");
+        await batch.TextAlignAsync(TextAlign.Center);
+        await batch.FillTextAsync("NEXT PIECE", MainAreaWidth + SidebarWidth / 2, 20);
 
         // Draw next piece area background
-        await _canvas.Context.FillStyleAsync("#111");
-        await _canvas.Context.FillRectAsync(NextPieceX, NextPieceY, NextPieceSize, NextPieceSize);
+        await batch.FillStyleAsync("#111");
+        await batch.FillRectAsync(NextPieceX, NextPieceY, NextPieceSize, NextPieceSize);
 
         // Draw next piece
         if (_nextPiece != null)
@@ -260,121 +258,115 @@ public partial class TetrisGame {
             var offsetX = NextPieceX + (NextPieceSize - piece[0].Length * blockSize) / 2;
             var offsetY = NextPieceY + (NextPieceSize - piece.Length * blockSize) / 2;
 
-            for (int row = 0; row < piece.Length; row++)
+            for (var row = 0; row < piece.Length; row++)
             {
-                for (int col = 0; col < piece[row].Length; col++) {
+                for (var col = 0; col < piece[row].Length; col++) {
                     if (piece[row][col] == 0) continue;
 
                     // Draw colored blocks
-                    await _canvas.Context.FillStyleAsync(_colors[type]);
-                    await _canvas.Context.FillRectAsync(offsetX + col * blockSize, offsetY + row * blockSize, blockSize, blockSize);
+                    await batch.FillStyleAsync(_colors[type]);
+                    await batch.FillRectAsync(offsetX + col * blockSize, offsetY + row * blockSize, blockSize, blockSize);
 
                     // Draw highlight
-                    await _canvas.Context.FillStyleAsync("rgba(255, 255, 255, 0.2)");
-                    await _canvas.Context.FillRectAsync(offsetX + col * blockSize, offsetY + row * blockSize, blockSize, 4);
-                    await _canvas.Context.FillRectAsync(offsetX + col * blockSize, offsetY + row * blockSize, 4, blockSize);
+                    await batch.FillStyleAsync("rgba(255, 255, 255, 0.2)");
+                    await batch.FillRectAsync(offsetX + col * blockSize, offsetY + row * blockSize, blockSize, 4);
+                    await batch.FillRectAsync(offsetX + col * blockSize, offsetY + row * blockSize, 4, blockSize);
 
                     // Draw shadow
-                    await _canvas.Context.FillStyleAsync("rgba(0, 0, 0, 0.4)");
-                    await _canvas.Context.FillRectAsync(offsetX + col * blockSize + blockSize - 4, offsetY + row * blockSize, 4, blockSize);
-                    await _canvas.Context.FillRectAsync(offsetX + col * blockSize, offsetY + row * blockSize + blockSize - 4, blockSize, 4);
+                    await batch.FillStyleAsync("rgba(0, 0, 0, 0.4)");
+                    await batch.FillRectAsync(offsetX + col * blockSize + blockSize - 4, offsetY + row * blockSize, 4, blockSize);
+                    await batch.FillRectAsync(offsetX + col * blockSize, offsetY + row * blockSize + blockSize - 4, blockSize, 4);
 
                     // Draw border
-                    await _canvas.Context.StrokeStyleAsync("black");
-                    await _canvas.Context.LineWidthAsync(1);
-                    await _canvas.Context.StrokeRectAsync(offsetX + col * blockSize, offsetY + row * blockSize, blockSize, blockSize);
+                    await batch.StrokeStyleAsync("black");
+                    await batch.LineWidthAsync(1);
+                    await batch.StrokeRectAsync(offsetX + col * blockSize, offsetY + row * blockSize, blockSize, blockSize);
                 }
             }
         }
     }
 
-    // Draw score panel
-    async Task DrawScorePanelAsync()
+    async ValueTask DrawScorePanelAsync(Batch2D batch)
     {
-        await _canvas.Context.FillStyleAsync("white");
-        await _canvas.Context.FontAsync("16px Arial");
-        await _canvas.Context.TextAlignAsync(TextAlign.Left);
-        await _canvas.Context.FillTextAsync($"Score: {_score}", ScorePanelX, ScorePanelY);
-        await _canvas.Context.FillTextAsync($"Lines: {_lines}", ScorePanelX, ScorePanelY + 30);
-        await _canvas.Context.FillTextAsync($"Level: {_level}", ScorePanelX, ScorePanelY + 60);
+        await batch.FillStyleAsync("white");
+        await batch.FontAsync("16px Arial");
+        await batch.TextAlignAsync(TextAlign.Left);
+        await batch.FillTextAsync($"Score: {_score}", ScorePanelX, ScorePanelY);
+        await batch.FillTextAsync($"Lines: {_lines}", ScorePanelX, ScorePanelY + 30);
+        await batch.FillTextAsync($"Level: {_level}", ScorePanelX, ScorePanelY + 60);
     }
 
-    // Draw controls panel
-    async Task DrawControlsPanelAsync()
+    async ValueTask DrawControlsPanelAsync(Batch2D batch)
     {
-        await _canvas.Context.FillStyleAsync("white");
-        await _canvas.Context.FontAsync("16px Arial");
-        await _canvas.Context.TextAlignAsync(TextAlign.Left);
-        await _canvas.Context.FillTextAsync("CONTROLS", ControlsPanelX, ControlsPanelY);
-        await _canvas.Context.FillTextAsync("← → : Move", ControlsPanelX, ControlsPanelY + 30);
-        await _canvas.Context.FillTextAsync("↑ : Rotate", ControlsPanelX, ControlsPanelY + 60);
-        await _canvas.Context.FillTextAsync("↓ : Soft Drop", ControlsPanelX, ControlsPanelY + 90);
-        await _canvas.Context.FillTextAsync("P : Pause", ControlsPanelX, ControlsPanelY + 120);
+        await batch.FillStyleAsync("white");
+        await batch.FontAsync("16px Arial");
+        await batch.TextAlignAsync(TextAlign.Left);
+        await batch.FillTextAsync("CONTROLS", ControlsPanelX, ControlsPanelY);
+        await batch.FillTextAsync("← → : Move", ControlsPanelX, ControlsPanelY + 30);
+        await batch.FillTextAsync("↑ : Rotate", ControlsPanelX, ControlsPanelY + 60);
+        await batch.FillTextAsync("↓ : Soft Drop", ControlsPanelX, ControlsPanelY + 90);
+        await batch.FillTextAsync("P : Pause", ControlsPanelX, ControlsPanelY + 120);
     }
 
-    // Draw start button
-    async Task DrawStartButtonAsync()
+    async ValueTask DrawStartButtonAsync(Batch2D batch)
     {
         // Check if mouse is over button
-        bool isHovered = _mouseX >= StartButtonX && _mouseX <= StartButtonX + ButtonWidth &&
-                         _mouseY >= StartButtonY && _mouseY <= StartButtonY + ButtonHeight;
+        var isHovered = _mouseX is >= StartButtonX and <= EndButtonX &&
+                        _mouseY is >= StartButtonY and <= EndButtonY;
 
         // Draw button background
-        await _canvas.Context.FillStyleAsync(isHovered ? "#6BCF70" : "#4CAF50");
-        await _canvas.Context.FillRectAsync(StartButtonX, StartButtonY, ButtonWidth, ButtonHeight);
+        await batch.FillStyleAsync(isHovered ? "#6BCF70" : "#4CAF50");
+        await batch.FillRectAsync(StartButtonX, StartButtonY, ButtonWidth, ButtonHeight);
 
         // Draw button text
-        await _canvas.Context.FillStyleAsync("white");
-        await _canvas.Context.FontAsync("16px Arial");
-        await _canvas.Context.TextAlignAsync(TextAlign.Center);
-        await _canvas.Context.TextBaseLineAsync(TextBaseLine.Middle);
-        await _canvas.Context.FillTextAsync(_gameActive ? "RESTART" : "START GAME", StartButtonX + ButtonWidth / 2, StartButtonY + ButtonHeight / 2);
+        await batch.FillStyleAsync("white");
+        await batch.FontAsync("16px Arial");
+        await batch.TextAlignAsync(TextAlign.Center);
+        await batch.TextBaseLineAsync(TextBaseLine.Middle);
+        await batch.FillTextAsync(_gameActive ? "RESTART" : "START GAME", StartButtonX + ButtonWidth / 2, StartButtonY + ButtonHeight / 2);
 
         // Reset text baseline
-        await _canvas.Context.TextBaseLineAsync(TextBaseLine.Alphabetic);
+        await batch.TextBaseLineAsync(TextBaseLine.Alphabetic);
     }
 
-    // Draw game over screen
-    async Task DrawGameOverScreenAsync()
+    async ValueTask DrawGameOverScreenAsync(Batch2D batch)
     {
         // Draw semi-transparent background
-        await _canvas.Context.FillStyleAsync("rgba(0, 0, 0, 0.8)");
-        await _canvas.Context.FillRectAsync(0, 0, MainAreaWidth, MainAreaHeight);
+        await batch.FillStyleAsync("rgba(0, 0, 0, 0.8)");
+        await batch.FillRectAsync(0, 0, MainAreaWidth, MainAreaHeight);
 
         // Draw game over text
-        await _canvas.Context.FillStyleAsync("white");
-        await _canvas.Context.FontAsync("28px Arial");
-        await _canvas.Context.TextAlignAsync(TextAlign.Center);
-        await _canvas.Context.FillTextAsync("GAME OVER!", MainAreaWidth / 2, MainAreaHeight / 2 - 40);
+        await batch.FillStyleAsync("white");
+        await batch.FontAsync("28px Arial");
+        await batch.TextAlignAsync(TextAlign.Center);
+        await batch.FillTextAsync("GAME OVER!", MainAreaWidth / 2, MainAreaHeight / 2 - 40);
 
         // Draw score
-        await _canvas.Context.FontAsync("20px Arial");
-        await _canvas.Context.FillTextAsync($"Your score: {_score}", MainAreaWidth / 2, MainAreaHeight / 2);
+        await batch.FontAsync("20px Arial");
+        await batch.FillTextAsync($"Your score: {_score}", MainAreaWidth / 2, MainAreaHeight / 2);
 
         // Draw play again message
-        await _canvas.Context.FontAsync("16px Arial");
-        await _canvas.Context.FillTextAsync("Click the START button to play again", MainAreaWidth / 2, MainAreaHeight / 2 + 40);
+        await batch.FontAsync("16px Arial");
+        await batch.FillTextAsync("Click the START button to play again", MainAreaWidth / 2, MainAreaHeight / 2 + 40);
     }
 
-    // Draw paused screen
-    async ValueTask DrawPausedScreenAsync()
+    async ValueTask DrawPausedScreenAsync(Batch2D batch)
     {
         // Draw semi-transparent background
-        await _canvas.Context.FillStyleAsync("rgba(0, 0, 0, 0.8)");
-        await _canvas.Context.FillRectAsync(0, 0, MainAreaWidth, MainAreaHeight);
+        await batch.FillStyleAsync("rgba(0, 0, 0, 0.8)");
+        await batch.FillRectAsync(0, 0, MainAreaWidth, MainAreaHeight);
 
         // Draw paused text
-        await _canvas.Context.FillStyleAsync("white");
-        await _canvas.Context.FontAsync("28px Arial");
-        await _canvas.Context.TextAlignAsync(TextAlign.Center);
-        await _canvas.Context.FillTextAsync("PAUSED", MainAreaWidth / 2, MainAreaHeight / 2 - 20);
+        await batch.FillStyleAsync("white");
+        await batch.FontAsync("28px Arial");
+        await batch.TextAlignAsync(TextAlign.Center);
+        await batch.FillTextAsync("PAUSED", MainAreaWidth / 2, MainAreaHeight / 2 - 20);
 
         // Draw instruction
-        await _canvas.Context.FontAsync("16px Arial");
-        await _canvas.Context.FillTextAsync("Press P to resume", MainAreaWidth / 2, MainAreaHeight / 2 + 20);
+        await batch.FontAsync("16px Arial");
+        await batch.FillTextAsync("Press P to resume", MainAreaWidth / 2, MainAreaHeight / 2 + 20);
     }
 
-    // Create a new piece
     void CreatePiece()
     {
         if (_nextPiece != null)
@@ -414,9 +406,9 @@ public partial class TetrisGame {
     {
         var piece = rotatedPiece ?? _currentPiece.Shape;
 
-        for (int row = 0; row < piece.Length; row++)
+        for (var row = 0; row < piece.Length; row++)
         {
-            for (int col = 0; col < piece[row].Length; col++)
+            for (var col = 0; col < piece[row].Length; col++)
             {
                 if (piece[row][col] != 0)
                 {
@@ -471,16 +463,15 @@ public partial class TetrisGame {
         _dropInterval = Math.Max(100, 1000 - (_level - 1) * 50);
     }
 
-    // Rotate piece
     void Rotate()
     {
         var piece = _currentPiece.Shape;
         var rotated = new int[piece[0].Length][];
 
-        for (int i = 0; i < piece[0].Length; i++)
+        for (var i = 0; i < piece[0].Length; i++)
         {
             rotated[i] = new int[piece.Length];
-            for (int j = piece.Length - 1; j >= 0; j--)
+            for (var j = piece.Length - 1; j >= 0; j--)
             {
                 rotated[i][piece.Length - 1 - j] = piece[j][i];
             }
@@ -514,9 +505,9 @@ public partial class TetrisGame {
         var piece = _currentPiece.Shape;
         var type = _currentPiece.Type;
 
-        for (int row = 0; row < piece.Length; row++)
+        for (var row = 0; row < piece.Length; row++)
         {
-            for (int col = 0; col < piece[row].Length; col++)
+            for (var col = 0; col < piece[row].Length; col++)
             {
                 if (piece[row][col] != 0)
                 {
@@ -534,14 +525,14 @@ public partial class TetrisGame {
 
     void ClearLines()
     {
-        int linesCleared = 0;
+        var linesCleared = 0;
 
-        for (int row = Rows - 1; row >= 0; row--)
+        for (var row = Rows - 1; row >= 0; row--)
         {
             if (_board[row].All(cell => cell != 0))
             {
                 // Remove the line
-                for (int r = row; r > 0; r--)
+                for (var r = row; r > 0; r--)
                 {
                     _board[r] = _board[r - 1].ToArray();
                 }
@@ -579,7 +570,6 @@ public partial class TetrisGame {
         _showGameOver = true;
     }
 
-    // Toggle pause
     void TogglePause()
     {
         _paused = !_paused;
@@ -636,5 +626,10 @@ public partial class TetrisGame {
         }
         
         return ValueTask.CompletedTask;
+    }
+
+    void HandleMouseMove(MouseEventArgs arg) {
+        _mouseX = arg.OffsetX;
+        _mouseY = arg.OffsetY;
     }
 }

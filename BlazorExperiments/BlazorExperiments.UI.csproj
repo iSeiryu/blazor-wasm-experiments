@@ -16,9 +16,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Excubo.Blazor.Canvas" Version="3.2.66" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="9.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.0" PrivateAssets="all" />
+    <PackageReference Include="Excubo.Blazor.Canvas" Version="3.2.74" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="9.0.4" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.4" PrivateAssets="all" />
   </ItemGroup>
 
 </Project>

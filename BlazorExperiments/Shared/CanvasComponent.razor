@@ -9,7 +9,7 @@
      @onkeydown="HandleKeyDown"
      @onkeydown:preventDefault="true"
      @onmouseup="@(async (mouseEventArgs) => await HandleMouseUp(mouseEventArgs))"
-     @onmousemove="@(async (mouseEventArgs) => await HandleMouseMove(mouseEventArgs))"
+     @onmousemove="HandleMouseMove"
      @ontouchstart="HandleTouchStart"
      @ontouchmove="HandleTouchMove"
      @ref="Container">
@@ -38,7 +38,7 @@
     [Parameter]
     public Func<MouseEventArgs, ValueTask>? HandleMouseUp { get; set; } = (MouseEventArgs) => ValueTask.CompletedTask;
     [Parameter]
-    public Func<MouseEventArgs, ValueTask>? HandleMouseMove { get; set; } = (MouseEventArgs) => ValueTask.CompletedTask;
+    public Action<MouseEventArgs>? HandleMouseMove { get; set; } = (MouseEventArgs) => { };
     [Parameter]
     public Action<TouchEventArgs>? HandleTouchStart { get; set; } = (TouchEventArgs) => { };
     [Parameter]
