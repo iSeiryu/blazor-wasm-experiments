@@ -32,14 +32,14 @@ jobs:
         run: dotnet workload install wasm-tools
       - name: Publish .NET Project
         run: dotnet publish BlazorExperiments/BlazorExperiments.UI.csproj -c Release -o release --nologo
-      - name: Publish .NET Project with AOT
-        run: dotnet publish BlazorExperiments/BlazorExperiments.UI.csproj -c Release -p:RunAOTCompilation=true -p:WasmStripILAfterAOT=true -o release-aot --nologo
-      - name: check current directory
-        run: ls -la release-aot/wwwroot && pwd 
-      - name: Fix base path for Blazor AOT app
-        run: sed -i 's/<base href="\/blazor\/" \/>/<base href="\/blazor-aot\/" \/>/g' release-aot/wwwroot/index.html
-      - name: check index.html
-        run: cat release-aot/wwwroot/index.html
+      # - name: Publish .NET Project with AOT
+      #   run: dotnet publish BlazorExperiments/BlazorExperiments.UI.csproj -c Release -p:RunAOTCompilation=true -p:WasmStripILAfterAOT=true -o release-aot --nologo
+      # - name: check current directory
+      #   run: ls -la release-aot/wwwroot && pwd 
+      # - name: Fix base path for Blazor AOT app
+      #   run: sed -i 's/<base href="\/blazor\/" \/>/<base href="\/blazor-aot\/" \/>/g' release-aot/wwwroot/index.html
+      # - name: check index.html
+      #   run: cat release-aot/wwwroot/index.html
 
       - name: Commit wwwroot to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4.8.0
@@ -50,11 +50,11 @@ jobs:
           target-folder: blazor
           token: ${{ secrets.DEPLOY_TOKEN }}
       
-      - name: Commit wwwroot AOT to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4.8.0
-        with:
-          branch: main
-          folder: release-aot/wwwroot
-          repository-name: iSeiryu/iseiryu.github.io
-          target-folder: blazor-aot
-          token: ${{ secrets.DEPLOY_TOKEN }}
+      # - name: Commit wwwroot AOT to GitHub Pages
+      #   uses: JamesIves/github-pages-deploy-action@v4.8.0
+      #   with:
+      #     branch: main
+      #     folder: release-aot/wwwroot
+      #     repository-name: iSeiryu/iseiryu.github.io
+      #     target-folder: blazor-aot
+      #     token: ${{ secrets.DEPLOY_TOKEN }}
