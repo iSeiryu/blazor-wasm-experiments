@@ -42,7 +42,10 @@ jobs:
       #   run: cat release-aot/wwwroot/index.html
 
       - name: Test token
-        run: echo ${{ secrets.DEPLOY_TOKEN }}
+        run: |
+          mytoken=${{ secrets.TESTING_SECRET }}
+          echo 'my sec: ${{ secrets.TESTING_SECRET }}'
+          echo "my token: $mytoken"
       - name: Commit wwwroot to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4.8.0
         with:
@@ -50,7 +53,7 @@ jobs:
           folder: release/wwwroot
           repository-name: iSeiryu/iseiryu.github.io
           target-folder: blazor
-          token: ${{ secrets.DEPLOY_TOKEN }}
+          token: ${{ secrets.TESTING_SECRET }}
       
       # - name: Commit wwwroot AOT to GitHub Pages
       #   uses: JamesIves/github-pages-deploy-action@v4.8.0
