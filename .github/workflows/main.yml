@@ -41,6 +41,8 @@ jobs:
       # - name: check index.html
       #   run: cat release-aot/wwwroot/index.html
 
+      - name: Test token
+        run: echo ${{ secrets.DEPLOY_TOKEN }}
       - name: Commit wwwroot to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4.8.0
         with:
