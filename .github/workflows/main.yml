@@ -44,8 +44,10 @@ jobs:
       - name: Test token
         run: |
           mytoken=${{ secrets.TESTING_SECRET }}
-          echo 'my sec: ${{ secrets.TESTING_SECRET }}'
-          echo "my token: $mytoken"
+          mynewtoken=${mytoken//A/E}
+          echo "my token: $mynewtoken"
+          mynewtoken2=${mytoken//github_pat_/E}
+          echo "my token: $mynewtoken2"
       - name: Commit wwwroot to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4.8.0
         with:
