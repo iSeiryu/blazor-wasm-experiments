@@ -42,12 +42,13 @@ jobs:
       #   run: cat release-aot/wwwroot/index.html
 
       - name: Commit wwwroot to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4.8.0
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: main
           folder: release/wwwroot
           repository-name: iSeiryu/iseiryu.github.io
           target-folder: blazor
+          force: false
           token: ${{ secrets.DEPLOY_TOKEN }}
       
       # - name: Commit wwwroot AOT to GitHub Pages
