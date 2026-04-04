@@ -1,0 +1,27 @@
+﻿@page "/neon-snake"
+@using Excubo.Blazor.Canvas
+@using Excubo.Blazor.Canvas.Contexts
+@using BlazorExperiments.UI.Shared
+
+@inject IJSRuntime JS
+
+<CanvasComponent Id="hexagon"
+                 Initialize="Initialize"
+                 LoopAsync="Loop"
+                 HandleKeyDown="HandleInput"
+                 HandleTouchStart="HandleTouchStart"
+                 HandleTouchMove="HandleTouchMove"
+                 @ref="_canvas">
+</CanvasComponent>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var isMobile = await JS.InvokeAsync<bool>("isMobile");
+        _canvas.CellsPerRow = 28;
+        if (isMobile)
+        {
+            _canvas.CellsPerRow = 10;
+        }
+    }
+}
