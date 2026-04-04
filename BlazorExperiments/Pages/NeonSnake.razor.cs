@@ -28,6 +28,8 @@ public partial class NeonSnake {
     double _obstacleSize = 0;
     const int ObstaclePadding = 14;
     double _cacheW = 0;
+    double _eggEr, _eggEh, _eggCacheSize;
+    const int EggCachePadding = 20;
     readonly List<Vector2> _bodyPoints = new(256);
     static readonly (double Ox, double Oy, double Rx, double Ry, double A)[] EggSpeckles =
         [(-0.35, -0.18, 0.18, 0.09, 0.4), (0.38, 0.2, 0.13, 0.07, -0.6), (-0.1, 0.35, 0.1, 0.06, 0.9)];
@@ -44,6 +46,10 @@ public partial class NeonSnake {
         _cacheW = _obstacleSize + ObstaclePadding * 2;
         var dpr = _canvas.WindowProperties.DevicePixelRatio;
         await JS.InvokeVoidAsync("neonSnakeCache.renderObstacle", _obstacleSize, ObstaclePadding, dpr);
+        _eggEr = _cellSize * 0.22;
+        _eggEh = _cellSize * 0.3;
+        _eggCacheSize = await JS.InvokeAsync<double>("neonSnakeEggCache.renderStaticEgg", _eggEr, _eggEh, EggCachePadding, dpr);
+        await JS.InvokeVoidAsync("neonSnakeEggCache.renderRunningEgg", _eggEr, _eggEh, EggCachePadding, dpr);
         var raw = await JS.InvokeAsync<string?>("localStorage.getItem", BestScoreKey);
         int savedBest = int.TryParse(raw, out var v) ? v : 0;
         _snake = new NeonSnakeGame.Snake(_cellSize) {
@@ -171,7 +177,14 @@ public partial class NeonSnake {
         await ctx.SaveAsync();
         await ctx.TranslateAsync(-_snake.CamX + shakeX, -_snake.CamY + NeonSnakeGame.Snake.HudH + shakeY);
 
-        await DrawGridAsync(ctx);
+        const int borderMargin = 26; // lineWidth/2 + shadowBlur
+        if (_snake.CamX < borderMargin || _snake.CamY < borderMargin ||
+            _snake.CamX + ScreenW > _snake.WorldW - borderMargin ||
+            _snake.CamY + ScreenH - NeonSnakeGame.Snake.HudH > _snake.WorldH - borderMargin)
+        {
+            await DrawGridAsync(ctx);
+        }
+
         await DrawObstaclesAsync(ctx);
         await DrawEggsAsync(ctx);
 
@@ -223,133 +236,112 @@ public partial class NeonSnake {
 
     async ValueTask DrawEggsAsync(Batch2D ctx) {
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var er = _eggEr;
+        var eh = _eggEh;
+        var halfCache = _eggCacheSize * 0.5;
+        var camX = _snake.CamX;
+        var camY = _snake.CamY;
+        var viewRight = camX + ScreenW;
+        var viewBottom = camY + ScreenH;
+        var cullMargin = _cellSize * 1.5;
+        var glowMargin = _cellSize * 0.5;
+
+        // Pass 1: non-running (static) eggs — use cached sprite
         foreach (var egg in _snake.Food) {
+            if (egg.Running) continue;
             var cx = egg.ScreenX;
             var cy = egg.ScreenY;
 
-            if (cx + _cellSize * 1.5 < _snake.CamX || cx - _cellSize * 1.5 > _snake.CamX + ScreenW) continue;
-            if (cy + _cellSize * 1.5 < _snake.CamY || cy - _cellSize * 1.5 > _snake.CamY + ScreenH) continue;
+            if (cx + cullMargin < camX || cx - cullMargin > viewRight) continue;
+            if (cy + cullMargin < camY || cy - cullMargin > viewBottom) continue;
 
-            var bob = egg.Running ? 0 : Math.Sin(now * 0.003 + egg.X * 2.1 + egg.Y * 3.7) * 2.5;
+            var bob = Math.Sin(now * 0.003 + egg.X * 2.1 + egg.Y * 3.7) * 2.5;
             var dy = cy + bob;
-            var er = _cellSize * 0.22;
-            var eh = _cellSize * 0.3;
-            var walkPhase = (now * 0.007) % (Math.PI * 2);
 
-            if (egg.Running) {
-                for (var si = 0; si < 2; si++) {
-                    var side = si == 0 ? -1 : 1;
-                    var extend = 0.65 + 0.35 * Math.Sin(walkPhase + (si == 0 ? 0 : Math.PI));
-                    var lx = cx + side * er * 0.5;
-                    var ly = dy + eh * 0.7;
-                    var lw = er * 0.48;
-                    var lh = eh * 0.72 * extend;
+            // Offscreen-cached egg sprite (glow + body + outline + speckles + highlight)
+            await ctx.DrawImageAsync("staticEggCache", cx - halfCache, dy - halfCache, _eggCacheSize, _eggCacheSize);
 
-                    await ctx.FillStyleAsync("#ffdc96");
-                    await ctx.FillRectAsync(lx - lw / 2, ly, lw, lh);
-
-                    var footDirX = egg.RunDir.X != 0 ? egg.RunDir.X * er * 0.2 : 0;
-                    await ctx.FillStyleAsync("#ffb855");
-                    await ctx.BeginPathAsync();
-                    await ctx.EllipseAsync(lx + footDirX, ly + lh, lw * 0.95, lw * 0.52, 0, 0, Math.PI * 2);
-                    await ctx.FillAsync(FillRule.NonZero);
-                }
-            }
-
-            await ctx.FillStyleAsync(cx, dy, er * 0.1, cx, dy, er * 2.6,
-                (0d, egg.Running ? "rgba(255,195,50,0.55)" : "rgba(90,255,215,0.45)"),
-                (1d, "rgba(0,0,0,0)"));
+            // Timer ring (dynamic per egg)
+            var frac = Math.Max(0, egg.Timer / 5000);
+            var ringR = eh * 1.48;
+            await ctx.StrokeStyleAsync("rgba(60,200,175,0.2)");
+            await ctx.LineWidthAsync(2.2);
             await ctx.BeginPathAsync();
-            await ctx.EllipseAsync(cx, dy, er * 2.4, eh * 2.4, 0, 0, Math.PI * 2);
-            await ctx.FillAsync(FillRule.NonZero);
-
-            await ctx.SaveAsync();
-            await ctx.ShadowColorAsync(egg.Running ? "rgba(255,160,30,0.85)" : "rgba(60,220,185,0.8)");
-            await ctx.ShadowBlurAsync(18);
-            if (egg.Running) {
-                await ctx.FillStyleAsync(cx - er * 0.3, dy - eh * 0.32, eh * 0.05, cx, dy, eh * 1.15,
-                    (0d, "#fff8e0"),
-                    (0.55, "#ffe070"),
-                    (1d, "#ff9020"));
-            }
-            else {
-                await ctx.FillStyleAsync(cx - er * 0.3, dy - eh * 0.32, eh * 0.05, cx, dy, eh * 1.15,
-                    (0d, "#eefffa"),
-                    (0.55, "#88f0d8"),
-                    (1d, "#28b09a"));
-            }
-
-            await ctx.BeginPathAsync();
-            await ctx.EllipseAsync(cx, dy, er, eh, 0, 0, Math.PI * 2);
-            await ctx.FillAsync(FillRule.NonZero);
-            await ctx.RestoreAsync();
-
-            await ctx.StrokeStyleAsync(egg.Running ? "rgba(255,200,80,0.9)" : "rgba(110,255,225,0.8)");
-            await ctx.LineWidthAsync(1.5);
-            await ctx.BeginPathAsync();
-            await ctx.EllipseAsync(cx, dy, er, eh, 0, 0, Math.PI * 2);
+            await ctx.ArcAsync(cx, dy, ringR, 0, Math.PI * 2);
             await ctx.StrokeAsync();
 
-            await ctx.FillStyleAsync(egg.Running ? "rgba(175,85,0,0.28)" : "rgba(25,135,115,0.28)");
-            foreach (var s in EggSpeckles) {
+            var tColor = frac > 0.6 ? "#38ffda" : frac > 0.3 ? "#ffd050" : "#ff6830";
+            await ctx.SaveAsync();
+            await ctx.StrokeStyleAsync(tColor);
+            await ctx.ShadowColorAsync(tColor);
+            await ctx.ShadowBlurAsync(10);
+            await ctx.LineWidthAsync(2.2);
+            await ctx.LineCapAsync(LineCap.Round);
+            await ctx.BeginPathAsync();
+            await ctx.ArcAsync(cx, dy, ringR, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
+            await ctx.StrokeAsync();
+            await ctx.RestoreAsync();
+        }
+
+        // Pass 2: running eggs — cached sprite + animated legs & eyes
+        var walkPhase = (now * 0.007) % (Math.PI * 2);
+        foreach (var egg in _snake.Food) {
+            if (!egg.Running) continue;
+            var cx = egg.ScreenX;
+            var cy = egg.ScreenY;
+
+            if (cx + cullMargin < camX || cx - cullMargin > viewRight) continue;
+            if (cy + cullMargin < camY || cy - cullMargin > viewBottom) continue;
+
+            var dy = cy; // no bob for running eggs
+
+            // Animated legs
+            for (var si = 0; si < 2; si++) {
+                var side = si == 0 ? -1 : 1;
+                var extend = 0.65 + 0.35 * Math.Sin(walkPhase + (si == 0 ? 0 : Math.PI));
+                var lx = cx + side * er * 0.5;
+                var ly = dy + eh * 0.7;
+                var lw = er * 0.48;
+                var lh = eh * 0.72 * extend;
+
+                await ctx.FillStyleAsync("#ffdc96");
+                await ctx.FillRectAsync(lx - lw / 2, ly, lw, lh);
+
+                var footDirX = egg.RunDir.X != 0 ? egg.RunDir.X * er * 0.2 : 0;
+                await ctx.FillStyleAsync("#ffb855");
                 await ctx.BeginPathAsync();
-                await ctx.EllipseAsync(cx + s.Ox * er, dy + s.Oy * eh, s.Rx * er, s.Ry * eh, s.A, 0, Math.PI * 2);
+                await ctx.EllipseAsync(lx + footDirX, ly + lh, lw * 0.95, lw * 0.52, 0, 0, Math.PI * 2);
                 await ctx.FillAsync(FillRule.NonZero);
             }
 
-            await ctx.FillStyleAsync("rgba(255,255,255,0.58)");
-            await ctx.BeginPathAsync();
-            await ctx.EllipseAsync(cx - er * 0.28, dy - eh * 0.32, er * 0.38, eh * 0.2, -0.3, 0, Math.PI * 2);
-            await ctx.FillAsync(FillRule.NonZero);
+            // Offscreen-cached egg sprite (glow + body + outline + speckles + highlight)
+            await ctx.DrawImageAsync("runningEggCache", cx - halfCache, dy - halfCache, _eggCacheSize, _eggCacheSize);
 
-            if (egg.Running) {
-                var rd = egg.RunDir;
-                var eyeR = er * 0.165;
-                var eyeCx = cx + rd.X * er * 0.38;
-                var eyeCy = dy + rd.Y * eh * 0.38;
-                var perpX = -rd.Y;
-                var perpY = rd.X;
+            // Animated eyes
+            var rd = egg.RunDir;
+            var eyeR = er * 0.165;
+            var eyeCx = cx + rd.X * er * 0.38;
+            var eyeCy = dy + rd.Y * eh * 0.38;
+            var perpX = -rd.Y;
+            var perpY = rd.X;
 
-                for (var side = -1; side <= 1; side += 2) {
-                    var ex = eyeCx + perpX * er * 0.28 * side;
-                    var ey = eyeCy + perpY * eh * 0.28 * side;
-                    await ctx.FillStyleAsync("rgba(248,252,255,0.95)");
-                    await ctx.BeginPathAsync();
-                    await ctx.ArcAsync(ex, ey, eyeR, 0, Math.PI * 2);
-                    await ctx.FillAsync(FillRule.NonZero);
-
-                    await ctx.FillStyleAsync("#18103a");
-                    await ctx.BeginPathAsync();
-                    await ctx.ArcAsync(ex + rd.X * eyeR * 0.22, ey + rd.Y * eyeR * 0.22, eyeR * 0.55, 0, Math.PI * 2);
-                    await ctx.FillAsync(FillRule.NonZero);
-
-                    await ctx.FillStyleAsync("rgba(255,255,255,0.88)");
-                    await ctx.BeginPathAsync();
-                    await ctx.ArcAsync(ex - eyeR * 0.2, ey - eyeR * 0.2, eyeR * 0.24, 0, Math.PI * 2);
-                    await ctx.FillAsync(FillRule.NonZero);
-                }
-            }
-
-            if (!egg.Running) {
-                var frac = Math.Max(0, egg.Timer / 5000);
-                var ringR = eh * 1.48;
-                await ctx.StrokeStyleAsync("rgba(60,200,175,0.2)");
-                await ctx.LineWidthAsync(2.2);
+            for (var side = -1; side <= 1; side += 2) {
+                var ex = eyeCx + perpX * er * 0.28 * side;
+                var ey = eyeCy + perpY * eh * 0.28 * side;
+                await ctx.FillStyleAsync("rgba(248,252,255,0.95)");
                 await ctx.BeginPathAsync();
-                await ctx.ArcAsync(cx, dy, ringR, 0, Math.PI * 2);
-                await ctx.StrokeAsync();
+                await ctx.ArcAsync(ex, ey, eyeR, 0, Math.PI * 2);
+                await ctx.FillAsync(FillRule.NonZero);
 
-                var tColor = frac > 0.6 ? "#38ffda" : frac > 0.3 ? "#ffd050" : "#ff6830";
-                await ctx.SaveAsync();
-                await ctx.StrokeStyleAsync(tColor);
-                await ctx.ShadowColorAsync(tColor);
-                await ctx.ShadowBlurAsync(10);
-                await ctx.LineWidthAsync(2.2);
-                await ctx.LineCapAsync(LineCap.Round);
+                await ctx.FillStyleAsync("#18103a");
                 await ctx.BeginPathAsync();
-                await ctx.ArcAsync(cx, dy, ringR, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
-                await ctx.StrokeAsync();
-                await ctx.RestoreAsync();
+                await ctx.ArcAsync(ex + rd.X * eyeR * 0.22, ey + rd.Y * eyeR * 0.22, eyeR * 0.55, 0, Math.PI * 2);
+                await ctx.FillAsync(FillRule.NonZero);
+
+                await ctx.FillStyleAsync("rgba(255,255,255,0.88)");
+                await ctx.BeginPathAsync();
+                await ctx.ArcAsync(ex - eyeR * 0.2, ey - eyeR * 0.2, eyeR * 0.24, 0, Math.PI * 2);
+                await ctx.FillAsync(FillRule.NonZero);
             }
         }
     }
