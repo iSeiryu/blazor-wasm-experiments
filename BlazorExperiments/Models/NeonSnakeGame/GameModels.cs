@@ -1,34 +1,28 @@
+using System.Numerics;
+
 namespace BlazorExperiments.UI.Models.NeonSnakeGame;
 
-public struct Vec2(double x = 0, double y = 0) {
-    public double X = x, Y = y;
-
-    public readonly Vec2 Copy() => new(X, Y);
-    public readonly Vec2 Add(Vec2 o) => new(X + o.X, Y + o.Y);
-    public readonly Vec2 Mul(double v) => new(X * v, Y * v);
-    public readonly Vec2 Sub(Vec2 o) => new(X - o.X, Y - o.Y);
-    public void SetFrom(Vec2 o) { X = o.X; Y = o.Y; }
-}
-
 public class SnakeBodyPart {
-    public Vec2 GridPos;
-    public Vec2 Direction;
-    public Vec2 TargetScreenPos;
-    public Vec2 CurrentScreenPos;
-    public Vec2 StartScreenPos;
+    public Vector2 GridPos;
+    public Vector2 Direction;
+    public Vector2 TargetScreenPos;
+    public Vector2 CurrentScreenPos;
+    public Vector2 StartScreenPos;
 }
 
-public class EatParticle {
+public struct EatParticle {
     public double X, Y, Vx, Vy, Life;
     public string Color = "";
+    public EatParticle() { }
 }
 
-public class HitParticle {
+public struct HitParticle {
     public double X, Y, Vx, Vy, Life, Size, Rotation, RotSpeed;
     public string Color = "";
+    public HitParticle() { }
 }
 
-public class DeathSegment {
+public struct DeathSegment {
     public double X, Y, Vx, Vy, R, Rotation, RotSpeed, Alpha;
     public bool IsHead;
 }

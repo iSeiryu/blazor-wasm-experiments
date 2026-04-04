@@ -1,13 +1,15 @@
 window.neonSnakeAudio = (() => {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
+    let masterGain = null;
 
     const getCtx = () => {
+        if (!AudioCtx) return null;
+
         if (!audioCtx) {
-            const Ctx = window.AudioContext || window.webkitAudioContext;
-            if (!Ctx) {
-                return null;
-            }
-            audioCtx = new Ctx();
+            audioCtx = new AudioCtx();
+            masterGain = audioCtx.createGain();
+            masterGain.connect(audioCtx.destination);
         }
 
         if (audioCtx.state === "suspended") {
@@ -26,7 +28,7 @@ window.neonSnakeAudio = (() => {
             const osc1 = ac.createOscillator();
             const gain1 = ac.createGain();
             osc1.connect(gain1);
-            gain1.connect(ac.destination);
+            gain1.connect(masterGain);
             osc1.type = "sine";
             osc1.frequency.setValueAtTime(520, now);
             osc1.frequency.exponentialRampToValueAtTime(1040, now + 0.13);
@@ -38,7 +40,7 @@ window.neonSnakeAudio = (() => {
             const osc2 = ac.createOscillator();
             const gain2 = ac.createGain();
             osc2.connect(gain2);
-            gain2.connect(ac.destination);
+            gain2.connect(masterGain);
             osc2.type = "sine";
             osc2.frequency.setValueAtTime(1040, now + 0.03);
             osc2.frequency.exponentialRampToValueAtTime(2080, now + 0.15);
@@ -60,7 +62,7 @@ window.neonSnakeAudio = (() => {
             const osc1 = ac.createOscillator();
             const gain1 = ac.createGain();
             osc1.connect(gain1);
-            gain1.connect(ac.destination);
+            gain1.connect(masterGain);
             osc1.type = "sawtooth";
             osc1.frequency.setValueAtTime(240, now);
             osc1.frequency.exponentialRampToValueAtTime(55, now + 0.18);
@@ -72,7 +74,7 @@ window.neonSnakeAudio = (() => {
             const osc2 = ac.createOscillator();
             const gain2 = ac.createGain();
             osc2.connect(gain2);
-            gain2.connect(ac.destination);
+            gain2.connect(masterGain);
             osc2.type = "square";
             osc2.frequency.setValueAtTime(160, now);
             osc2.frequency.exponentialRampToValueAtTime(38, now + 0.09);
@@ -85,23 +87,23 @@ window.neonSnakeAudio = (() => {
         }
     };
 
+    const DEATH_NOTES = [
+        { freq: 440, endFreq: 330, start: 0.0, dur: 0.22 },
+        { freq: 330, endFreq: 220, start: 0.19, dur: 0.22 },
+        { freq: 220, endFreq: 100, start: 0.36, dur: 0.55 }
+    ];
+
     const playDeathSound = () => {
         try {
             const ac = getCtx();
             if (!ac) return;
             const now = ac.currentTime;
 
-            const notes = [
-                { freq: 440, endFreq: 330, start: 0.0, dur: 0.22 },
-                { freq: 330, endFreq: 220, start: 0.19, dur: 0.22 },
-                { freq: 220, endFreq: 100, start: 0.36, dur: 0.55 }
-            ];
-
-            for (const n of notes) {
+            for (const n of DEATH_NOTES) {
                 const osc = ac.createOscillator();
                 const gain = ac.createGain();
                 osc.connect(gain);
-                gain.connect(ac.destination);
+                gain.connect(masterGain);
                 osc.type = "sawtooth";
                 osc.frequency.setValueAtTime(n.freq, now + n.start);
                 osc.frequency.exponentialRampToValueAtTime(n.endFreq, now + n.start + n.dur);
@@ -114,6 +116,8 @@ window.neonSnakeAudio = (() => {
             // Ignore audio failures silently to avoid interrupting gameplay.
         }
     };
+
+    audioCtx = getCtx();
 
     return {
         playEatSound,

@@ -1,6 +1,6 @@
 ﻿using System.Timers;
+using System.Numerics;
 using BlazorExperiments.UI.Models.NeonSnakeGame;
-using BlazorExperiments.UI.Models.SnakeGame;
 using BlazorExperiments.UI.Shared;
 using Excubo.Blazor.Canvas;
 using Excubo.Blazor.Canvas.Contexts;
@@ -24,24 +24,36 @@ public partial class NeonSnake {
     DateTime _lastTick;
     TouchPoint? _previousTouch = null;
     bool _audioEnabled = true;
+    double _obstacleInset = 0;
+    double _obstacleSize = 0;
+    readonly List<Vector2> _bodyPoints = new(256);
+    static readonly (double Ox, double Oy, double Rx, double Ry, double A)[] EggSpeckles =
+        [(-0.35, -0.18, 0.18, 0.09, 0.4), (0.38, 0.2, 0.13, 0.07, -0.6), (-0.1, 0.35, 0.1, 0.06, 0.9)];
+    static readonly (double Offset, string Color)[] TailGradientStops = [(0d, "#9bb6ff"), (1d, Neon.SnakeSecondary)];
+    int _lastScore, _lastBestScore;
+    string _scoreText = "Score: 0";
+    string _bestText = "Best: 0";
+    const string BestScoreKey = "neonSnakeBestScore";
 
-    public void Initialize() {
+    public async Task InitializeAsync() {
         _cellSize = _canvas.CellSize;
-        _snake = new NeonSnakeGame.Snake(_cellSize);
+        _obstacleInset = _cellSize * 0.08;
+        _obstacleSize = _cellSize - _obstacleInset * 2;
+        var raw = await JS.InvokeAsync<string?>("localStorage.getItem", BestScoreKey);
+        int savedBest = int.TryParse(raw, out var v) ? v : 0;
+        _snake = new NeonSnakeGame.Snake(_cellSize) {
+            BestScore = savedBest
+        };
 
         _lastTick = DateTime.UtcNow;
-
         _canvas.Timer.Enabled = true;
         StateHasChanged();
     }
 
-    private async ValueTask Loop(ElapsedEventArgs elapsedEvent) {
-        if (_snake is null || _canvas.Context is null) return;
-
+    private async ValueTask LoopAsync(ElapsedEventArgs elapsedEvent) {
         var now = elapsedEvent.SignalTime;
-        var dt = _lastTick == default ? 16.67 : (now - _lastTick).TotalMilliseconds;
+        var dt = (now - _lastTick).TotalMilliseconds;
         _lastTick = now;
-        if (dt <= 0 || dt > 1000) dt = 16.67;
 
         var scoreBefore = _snake.Score;
         var healthBefore = _snake.Health;
@@ -49,18 +61,11 @@ public partial class NeonSnake {
 
         _snake.Update(dt, ScreenW, ScreenH);
 
-        if (_audioEnabled) {
-            if (_snake.Score > scoreBefore) {
-                await PlayEatSound();
-            }
-
-            if (_snake.Health < healthBefore) {
-                await PlayHitSound();
-            }
-
-            if (!deadBefore && _snake.Dead) {
-                await PlayDeathSound();
-            }
+        if (_snake.Score > scoreBefore) await PlaySoundAsync("neonSnakeAudio.playEatSound");
+        if (_snake.Health < healthBefore) await PlaySoundAsync("neonSnakeAudio.playHitSound");
+        if (!deadBefore && _snake.Dead) {
+            await PlaySoundAsync("neonSnakeAudio.playDeathSound");
+            await JS.InvokeVoidAsync("localStorage.setItem", BestScoreKey, _snake.BestScore);
         }
 
         await using var batch = _canvas.Context.CreateBatch();
@@ -127,38 +132,12 @@ public partial class NeonSnake {
         _previousTouch = e.Touches[^1];
     }
 
-    async ValueTask PlayEatSound() {
+    async ValueTask PlaySoundAsync(string fn) {
         if (!_audioEnabled) return;
-
         try {
-            await JS.InvokeVoidAsync("neonSnakeAudio.playEatSound");
-        } catch (JSException) {
-            _audioEnabled = false;
-        } catch (InvalidOperationException) {
-            _audioEnabled = false;
+            await JS.InvokeVoidAsync(fn);
         }
-    }
-
-    async ValueTask PlayHitSound() {
-        if (!_audioEnabled) return;
-
-        try {
-            await JS.InvokeVoidAsync("neonSnakeAudio.playHitSound");
-        } catch (JSException) {
-            _audioEnabled = false;
-        } catch (InvalidOperationException) {
-            _audioEnabled = false;
-        }
-    }
-
-    async ValueTask PlayDeathSound() {
-        if (!_audioEnabled) return;
-
-        try {
-            await JS.InvokeVoidAsync("neonSnakeAudio.playDeathSound");
-        } catch (JSException) {
-            _audioEnabled = false;
-        } catch (InvalidOperationException) {
+        catch (Exception) {
             _audioEnabled = false;
         }
     }
@@ -179,7 +158,7 @@ public partial class NeonSnake {
         var shakeX = 0d;
         var shakeY = 0d;
         if (_snake.ScreenShake > 0) {
-            var intensity = _snake.ScreenShake * 8;
+            var intensity = _snake.ScreenShake * 80;
             shakeX = (Random.Shared.NextDouble() - 0.5) * intensity * 2;
             shakeY = (Random.Shared.NextDouble() - 0.5) * intensity * 2;
         }
@@ -193,7 +172,8 @@ public partial class NeonSnake {
 
         if (_snake.Dead && _snake.DeathSegments.Count > 0) {
             await DrawDeathSegmentsAsync(ctx);
-        } else {
+        }
+        else {
             await DrawSnakeBodyAsync(ctx);
             await DrawHeadAsync(ctx);
         }
@@ -232,21 +212,22 @@ public partial class NeonSnake {
 
         await ctx.StrokeStyleAsync(Neon.GridLine);
         await ctx.LineWidthAsync(1);
+
+        await ctx.BeginPathAsync();
         for (var c = startCol; c <= endCol; c++) {
             var x = c * _cellSize + 0.5;
-            await ctx.BeginPathAsync();
             await ctx.MoveToAsync(x, y0);
             await ctx.LineToAsync(x, y0 + h);
-            await ctx.StrokeAsync();
         }
+        await ctx.StrokeAsync();
 
+        await ctx.BeginPathAsync();
         for (var r = startRow; r <= endRow; r++) {
             var y = r * _cellSize + 0.5;
-            await ctx.BeginPathAsync();
             await ctx.MoveToAsync(x0, y);
             await ctx.LineToAsync(x0 + w, y);
-            await ctx.StrokeAsync();
         }
+        await ctx.StrokeAsync();
 
         await ctx.SaveAsync();
         await ctx.StrokeStyleAsync(Neon.Border);
@@ -258,50 +239,47 @@ public partial class NeonSnake {
     }
 
     async ValueTask DrawObstaclesAsync(Batch2D ctx) {
-        var pad = _cellSize * 0.08;
-        var s = _cellSize - pad * 2;
-
         foreach (var o in _snake.Obstacles) {
-            var ox = o.X * _cellSize + pad;
-            var oy = o.Y * _cellSize + pad;
+            var ox = o.X * _cellSize + _obstacleInset;
+            var oy = o.Y * _cellSize + _obstacleInset;
 
-            if (ox + s < _snake.CamX - _cellSize || ox > _snake.CamX + ScreenW + _cellSize) continue;
-            if (oy + s < _snake.CamY - _cellSize || oy > _snake.CamY + ScreenH + _cellSize) continue;
-
-            async ValueTask RockPathAsync() {
-                await ctx.BeginPathAsync();
-                await ctx.MoveToAsync(ox + s * 0.2, oy + s);
-                await ctx.LineToAsync(ox, oy + s * 0.5);
-                await ctx.LineToAsync(ox + s * 0.15, oy + s * 0.15);
-                await ctx.LineToAsync(ox + s * 0.5, oy);
-                await ctx.LineToAsync(ox + s * 0.85, oy + s * 0.1);
-                await ctx.LineToAsync(ox + s, oy + s * 0.45);
-                await ctx.LineToAsync(ox + s * 0.8, oy + s);
-                await ctx.ClosePathAsync();
-            }
+            if (ox + _obstacleSize < _snake.CamX - _cellSize || ox > _snake.CamX + ScreenW + _cellSize) continue;
+            if (oy + _obstacleSize < _snake.CamY - _cellSize || oy > _snake.CamY + ScreenH + _cellSize) continue;
 
             await ctx.SaveAsync();
             await ctx.ShadowColorAsync(Neon.ObstacleGlow);
             await ctx.ShadowBlurAsync(12);
-            await ctx.FillStyleAsync(ox, oy, ox + s, oy + s,
+            await ctx.FillStyleAsync(ox, oy, ox + _obstacleSize, oy + _obstacleSize,
                 (0d, "#2a3b74"),
                 (1d, Neon.ObstacleBase));
-            await RockPathAsync();
+            await RockPathAsync(ox, oy);
             await ctx.FillAsync(FillRule.NonZero);
             await ctx.RestoreAsync();
 
             await ctx.StrokeStyleAsync(Neon.ObstacleEdge);
             await ctx.LineWidthAsync(1.5);
-            await RockPathAsync();
+            await RockPathAsync(ox, oy);
             await ctx.StrokeAsync();
 
             await ctx.StrokeStyleAsync("rgba(170,200,255,0.35)");
             await ctx.LineWidthAsync(1);
             await ctx.BeginPathAsync();
-            await ctx.MoveToAsync(ox + s * 0.22, oy + s * 0.35);
-            await ctx.LineToAsync(ox + s * 0.58, oy + s * 0.5);
-            await ctx.LineToAsync(ox + s * 0.74, oy + s * 0.72);
+            await ctx.MoveToAsync(ox + _obstacleSize * 0.22, oy + _obstacleSize * 0.35);
+            await ctx.LineToAsync(ox + _obstacleSize * 0.58, oy + _obstacleSize * 0.5);
+            await ctx.LineToAsync(ox + _obstacleSize * 0.74, oy + _obstacleSize * 0.72);
             await ctx.StrokeAsync();
+        }
+
+        async ValueTask RockPathAsync(double ox, double oy) {
+            await ctx.BeginPathAsync();
+            await ctx.MoveToAsync(ox + _obstacleSize * 0.2, oy + _obstacleSize);
+            await ctx.LineToAsync(ox, oy + _obstacleSize * 0.5);
+            await ctx.LineToAsync(ox + _obstacleSize * 0.15, oy + _obstacleSize * 0.15);
+            await ctx.LineToAsync(ox + _obstacleSize * 0.5, oy);
+            await ctx.LineToAsync(ox + _obstacleSize * 0.85, oy + _obstacleSize * 0.1);
+            await ctx.LineToAsync(ox + _obstacleSize, oy + _obstacleSize * 0.45);
+            await ctx.LineToAsync(ox + _obstacleSize * 0.8, oy + _obstacleSize);
+            await ctx.ClosePathAsync();
         }
     }
 
@@ -355,7 +333,8 @@ public partial class NeonSnake {
                     (0d, "#fff8e0"),
                     (0.55, "#ffe070"),
                     (1d, "#ff9020"));
-            } else {
+            }
+            else {
                 await ctx.FillStyleAsync(cx - er * 0.3, dy - eh * 0.32, eh * 0.05, cx, dy, eh * 1.15,
                     (0d, "#eefffa"),
                     (0.55, "#88f0d8"),
@@ -373,10 +352,8 @@ public partial class NeonSnake {
             await ctx.EllipseAsync(cx, dy, er, eh, 0, 0, Math.PI * 2);
             await ctx.StrokeAsync();
 
-            (double Ox, double Oy, double Rx, double Ry, double A)[] speckles =
-                [(-0.35, -0.18, 0.18, 0.09, 0.4), (0.38, 0.2, 0.13, 0.07, -0.6), (-0.1, 0.35, 0.1, 0.06, 0.9)];
             await ctx.FillStyleAsync(egg.Running ? "rgba(175,85,0,0.28)" : "rgba(25,135,115,0.28)");
-            foreach (var s in speckles) {
+            foreach (var s in EggSpeckles) {
                 await ctx.BeginPathAsync();
                 await ctx.EllipseAsync(cx + s.Ox * er, dy + s.Oy * eh, s.Rx * er, s.Ry * eh, s.A, 0, Math.PI * 2);
                 await ctx.FillAsync(FillRule.NonZero);
@@ -444,7 +421,8 @@ public partial class NeonSnake {
     async ValueTask DrawSnakeBodyAsync(Batch2D ctx) {
         var baseR = _cellSize * 0.44;
         var tailR = baseR * 0.35;
-        var bodyPoints = new List<Vec2>(_snake.Parts.Count);
+        var bodyPoints = _bodyPoints;
+        bodyPoints.Clear();
         for (var i = _snake.Parts.Count - 1; i >= 0; i--) {
             bodyPoints.Add(_snake.Parts[i].CurrentScreenPos);
         }
@@ -509,11 +487,7 @@ public partial class NeonSnake {
         await ctx.SaveAsync();
         await ctx.TranslateAsync(tail.X, tail.Y);
         await ctx.RotateAsync(tailAngle);
-        await ctx.FillStyleAsync(-tailR * 0.5, -tailR * 0.2, tailR * 0.2, 0, 0, tailR * 1.4,
-            new (double Offset, string Color)[] {
-                (0d, "#9bb6ff"),
-                (1d, Neon.SnakeSecondary)
-            });
+        await ctx.FillStyleAsync(-tailR * 0.5, -tailR * 0.2, tailR * 0.2, 0, 0, tailR * 1.4, TailGradientStops);
         await ctx.BeginPathAsync();
         await ctx.EllipseAsync(0, 0, tailR * 1.2, tailR * 0.9, 0, 0, Math.PI * 2);
         await ctx.FillAsync(FillRule.NonZero);
@@ -689,7 +663,8 @@ public partial class NeonSnake {
                 var oy = Math.Sin(a) * size;
                 if (s == 0) {
                     await ctx.MoveToAsync(p.X + ox, p.Y + oy);
-                } else {
+                }
+                else {
                     await ctx.LineToAsync(p.X + ox, p.Y + oy);
                 }
 
@@ -804,7 +779,8 @@ public partial class NeonSnake {
         await ctx.ShadowBlurAsync(10);
         await ctx.FontAsync("bold 22px monospace");
         await ctx.TextAlignAsync(TextAlign.Left);
-        await ctx.FillTextAsync($"Score: {_snake.Score}", 15, 33);
+        if (_snake.Score != _lastScore) { _lastScore = _snake.Score; _scoreText = $"Score: {_snake.Score}"; }
+        await ctx.FillTextAsync(_scoreText, 15, 33);
         await ctx.ShadowBlurAsync(0);
 
         var heartSize = 14d;
@@ -820,7 +796,8 @@ public partial class NeonSnake {
         await ctx.FillStyleAsync(Neon.TextMuted);
         await ctx.FontAsync("18px monospace");
         await ctx.TextAlignAsync(TextAlign.Right);
-        await ctx.FillTextAsync($"Best: {_snake.BestScore}", ScreenW - 15, 33);
+        if (_snake.BestScore != _lastBestScore) { _lastBestScore = _snake.BestScore; _bestText = $"Best: {_snake.BestScore}"; }
+        await ctx.FillTextAsync(_bestText, ScreenW - 15, 33);
         await ctx.TextAlignAsync(TextAlign.Left);
     }
 

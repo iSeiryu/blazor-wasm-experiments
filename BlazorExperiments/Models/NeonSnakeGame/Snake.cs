@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace BlazorExperiments.UI.Models.NeonSnakeGame;
 
 public class Snake {
@@ -9,20 +11,20 @@ public class Snake {
     public int WorldH = Rows;
     public const double DeathAnimDuration = 1500;
 
-    public readonly Vec2[] CenterCoords;
+    public readonly Vector2[] CenterCoords;
 
     public List<SnakeBodyPart> Parts = [];
     public SnakeBodyPart Head => Parts[0];
     public int Score;
     public List<Egg> Food = [];
-    public double StepInterval = 300;
-    public double StepAccumulator;
+    public float StepInterval = 300;
+    public float StepAccumulator;
     public List<EatParticle> EatParticles = [];
     public double EatBounce;
     public bool Dead;
     public int Health = 3;
     public double CamX, CamY;
-    public List<Vec2> Obstacles = [];
+    public List<Vector2> Obstacles = [];
     public int BestScore;
     public double HitFlash;
     public List<HitParticle> HitParticles = [];
@@ -35,25 +37,27 @@ public class Snake {
     static readonly string[] EatColors = ["#ffe080", "#ffb840", "#fff4c0", "#ff9420", Neon.TextAccent];
     static readonly string[] DeathColors = [Neon.Danger, "#ff6a9d", Neon.TextAccent, "#8b5dff", "#ffc2ff"];
     static readonly string[] RockColors = ["#3d4a7f", "#4f63a1", "#32406e", "#6b7fd1", "#5868a8"];
+    static readonly Vector2[] CardinalDirs = [new(1, 0), new(-1, 0), new(0, 1), new(0, -1)];
 
     public Snake(int cellSize) {
         CellSize = cellSize;
         WorldW = Cols * CellSize;
         WorldH = Rows * CellSize;
-        CenterCoords = new Vec2[Cols * Rows];
+        CenterCoords = new Vector2[Cols * Rows];
+        float centerOffset = CellSize * 0.5f;
         for (int y = 0; y < Rows; y++)
             for (int x = 0; x < Cols; x++)
-                CenterCoords[y * Cols + x] = new Vec2(x * CellSize + CellSize * 0.5, y * CellSize + CellSize * 0.5);
+                CenterCoords[y * Cols + x] = new Vector2(x * CellSize + centerOffset, y * CellSize + centerOffset);
 
         int startCol = Cols / 2, startRow = Rows / 2;
         for (int i = 0; i < 3; i++) {
             int idx = GetIndex(startCol - i, startRow);
             Parts.Add(new SnakeBodyPart {
-                GridPos = new Vec2(startCol - i, startRow),
-                Direction = new Vec2(1, 0),
-                TargetScreenPos = CenterCoords[idx].Copy(),
-                CurrentScreenPos = CenterCoords[idx].Copy(),
-                StartScreenPos = CenterCoords[idx].Copy()
+                GridPos = new Vector2(startCol - i, startRow),
+                Direction = new Vector2(1, 0),
+                TargetScreenPos = CenterCoords[idx],
+                CurrentScreenPos = CenterCoords[idx],
+                StartScreenPos = CenterCoords[idx]
             });
         }
 
@@ -81,7 +85,7 @@ public class Snake {
         int px, py;
         do { px = Random.Shared.Next(Cols); py = Random.Shared.Next(Rows); }
         while (IsOccupied(px, py));
-        Obstacles.Add(new Vec2(px, py));
+        Obstacles.Add(new Vector2(px, py));
     }
 
     void SpawnFood() {
@@ -91,17 +95,26 @@ public class Snake {
         int idx = GetIndex(px, py);
         var cc = CenterCoords[idx];
         Food.Add(new Egg {
-            X = px, Y = py,
-            ScreenX = cc.X, ScreenY = cc.Y,
-            StartScreenX = cc.X, StartScreenY = cc.Y,
-            TargetScreenX = cc.X, TargetScreenY = cc.Y
+            X = px,
+            Y = py,
+            ScreenX = cc.X,
+            ScreenY = cc.Y,
+            StartScreenX = cc.X,
+            StartScreenY = cc.Y,
+            TargetScreenX = cc.X,
+            TargetScreenY = cc.Y
         });
     }
 
-    Vec2 RandomRunDir() => Random.Shared.Next(4) switch {
-        0 => new Vec2(1, 0), 1 => new Vec2(-1, 0),
-        2 => new Vec2(0, 1), _ => new Vec2(0, -1)
-    };
+    Vector2 RandomRunDir() => CardinalDirs[Random.Shared.Next(CardinalDirs.Length)];
+
+    static int DirectionIndex(Vector2 dir) {
+        if (dir.X == 1 && dir.Y == 0) return 0;
+        if (dir.X == -1 && dir.Y == 0) return 1;
+        if (dir.X == 0 && dir.Y == 1) return 2;
+        if (dir.X == 0 && dir.Y == -1) return 3;
+        return -1;
+    }
 
     bool EggBlocked(int x, int y, Egg skipEgg) {
         if (x < 0 || x >= Cols || y < 0 || y >= Rows) return true;
@@ -113,16 +126,25 @@ public class Snake {
     }
 
     void StepEgg(Egg egg) {
-        Vec2[] allDirs = [new(1, 0), new(-1, 0), new(0, 1), new(0, -1)];
-        Vec2[] dirs;
-        if (Random.Shared.NextDouble() < 0.72) {
-            var rest = allDirs.Where(d => !(d.X == egg.RunDir.X && d.Y == egg.RunDir.Y))
-                              .OrderBy(_ => Random.Shared.Next()).ToArray();
-            dirs = [egg.RunDir, .. rest];
-        } else {
-            dirs = allDirs.OrderBy(_ => Random.Shared.Next()).ToArray();
+        Span<int> order = stackalloc int[4] { 0, 1, 2, 3 };
+        for (int i = order.Length - 1; i > 0; i--) {
+            int j = Random.Shared.Next(i + 1);
+            (order[i], order[j]) = (order[j], order[i]);
         }
-        foreach (var d in dirs) {
+
+        if (Random.Shared.NextDouble() < 0.72) {
+            int preferred = DirectionIndex(egg.RunDir);
+            if (preferred >= 0) {
+                for (int i = 0; i < order.Length; i++) {
+                    if (order[i] != preferred) continue;
+                    (order[0], order[i]) = (order[i], order[0]);
+                    break;
+                }
+            }
+        }
+
+        foreach (int idx in order) {
+            var d = CardinalDirs[idx];
             int nx = egg.X + (int)d.X, ny = egg.Y + (int)d.Y;
             if (!EggBlocked(nx, ny, egg)) { egg.X = nx; egg.Y = ny; egg.RunDir = d; return; }
         }
@@ -142,11 +164,14 @@ public class Snake {
             double angle = Random.Shared.NextDouble() * Math.PI * 2;
             double speed = 2 + Random.Shared.NextDouble() * 4;
             DeathSegments.Add(new DeathSegment {
-                X = part.CurrentScreenPos.X, Y = part.CurrentScreenPos.Y,
-                Vx = Math.Cos(angle) * speed, Vy = Math.Sin(angle) * speed,
+                X = part.CurrentScreenPos.X,
+                Y = part.CurrentScreenPos.Y,
+                Vx = Math.Cos(angle) * speed,
+                Vy = Math.Sin(angle) * speed,
                 R = baseR - (baseR - tailR) * (i / (double)len),
                 RotSpeed = (Random.Shared.NextDouble() - 0.5) * 0.15,
-                Alpha = 1.0, IsHead = i == 0
+                Alpha = 1.0,
+                IsHead = i == 0
             });
         }
         double hx = Head.CurrentScreenPos.X, hy = Head.CurrentScreenPos.Y;
@@ -154,9 +179,12 @@ public class Snake {
             double angle = (p / 16.0) * Math.PI * 2 + Random.Shared.NextDouble() * 0.3;
             double speed = 2 + Random.Shared.NextDouble() * 3;
             EatParticles.Add(new EatParticle {
-                X = hx, Y = hy,
-                Vx = Math.Cos(angle) * speed, Vy = Math.Sin(angle) * speed,
-                Life = 1.0, Color = DeathColors[p % 5]
+                X = hx,
+                Y = hy,
+                Vx = Math.Cos(angle) * speed,
+                Vy = Math.Sin(angle) * speed,
+                Life = 1.0,
+                Color = DeathColors[p % 5]
             });
         }
     }
@@ -170,9 +198,12 @@ public class Snake {
             double angle = Random.Shared.NextDouble() * Math.PI * 2;
             double speed = 2 + Random.Shared.NextDouble() * 3;
             HitParticles.Add(new HitParticle {
-                X = hx, Y = hy,
-                Vx = Math.Cos(angle) * speed, Vy = Math.Sin(angle) * speed,
-                Life = 1.0, Size = 3 + Random.Shared.NextDouble() * 5,
+                X = hx,
+                Y = hy,
+                Vx = Math.Cos(angle) * speed,
+                Vy = Math.Sin(angle) * speed,
+                Life = 1.0,
+                Size = 3 + Random.Shared.NextDouble() * 5,
                 Color = RockColors[Random.Shared.Next(5)],
                 Rotation = Random.Shared.NextDouble() * Math.PI * 2,
                 RotSpeed = (Random.Shared.NextDouble() - 0.5) * 0.3
@@ -190,34 +221,38 @@ public class Snake {
             p.X += p.Vx; p.Y += p.Vy; p.Vy += 0.12;
             p.Rotation += p.RotSpeed; p.Life -= deltaTime / 500;
             if (p.Life <= 0) { HitParticles[i] = HitParticles[^1]; HitParticles.RemoveAt(HitParticles.Count - 1); }
+            else HitParticles[i] = p;
         }
         for (int i = EatParticles.Count - 1; i >= 0; i--) {
             var p = EatParticles[i];
             p.X += p.Vx; p.Y += p.Vy; p.Vy += 0.05;
             p.Life -= deltaTime / 600;
             if (p.Life <= 0) { EatParticles[i] = EatParticles[^1]; EatParticles.RemoveAt(EatParticles.Count - 1); }
+            else EatParticles[i] = p;
         }
 
         if (Dead) {
             DeathTimer += deltaTime;
             double progress = Math.Min(1, DeathTimer / DeathAnimDuration);
-            foreach (var seg in DeathSegments) {
+            for (int si = 0; si < DeathSegments.Count; si++) {
+                var seg = DeathSegments[si];
                 seg.X += seg.Vx; seg.Y += seg.Vy;
                 seg.Vy += 0.06; seg.Vx *= 0.995;
                 seg.Rotation += seg.RotSpeed;
                 seg.Alpha = Math.Max(0, 1 - progress * 0.8);
+                DeathSegments[si] = seg;
             }
             if (DeathTimer >= DeathAnimDuration) ShowDeathScreen = true;
             return;
         }
 
-        double prog = StepAccumulator / StepInterval;
+        float prog = StepAccumulator / StepInterval;
         foreach (var part in Parts) {
             part.CurrentScreenPos.X = part.StartScreenPos.X + (part.TargetScreenPos.X - part.StartScreenPos.X) * prog;
             part.CurrentScreenPos.Y = part.StartScreenPos.Y + (part.TargetScreenPos.Y - part.StartScreenPos.Y) * prog;
         }
 
-        StepAccumulator += deltaTime;
+        StepAccumulator += (float)deltaTime;
         if (StepAccumulator >= StepInterval) {
             StepAccumulator -= StepInterval;
             GridStep();
@@ -243,7 +278,8 @@ public class Snake {
                         egg.TargetScreenX = cc.X; egg.TargetScreenY = cc.Y;
                     }
                 }
-            } else {
+            }
+            else {
                 double t = egg.RunAccum / 500.0;
                 egg.ScreenX = egg.StartScreenX + (egg.TargetScreenX - egg.StartScreenX) * t;
                 egg.ScreenY = egg.StartScreenY + (egg.TargetScreenY - egg.StartScreenY) * t;
@@ -270,9 +306,12 @@ public class Snake {
                 double angle = (p / 8.0) * Math.PI * 2 + Random.Shared.NextDouble() * 0.5;
                 double speed = 1.5 + Random.Shared.NextDouble() * 2;
                 EatParticles.Add(new EatParticle {
-                    X = egg.ScreenX, Y = egg.ScreenY,
-                    Vx = Math.Cos(angle) * speed, Vy = Math.Sin(angle) * speed,
-                    Life = 1.0, Color = EatColors[p % 5]
+                    X = egg.ScreenX,
+                    Y = egg.ScreenY,
+                    Vx = Math.Cos(angle) * speed,
+                    Vy = Math.Sin(angle) * speed,
+                    Life = 1.0,
+                    Color = EatColors[p % 5]
                 });
             }
             EatBounce = 1.0;
@@ -282,12 +321,12 @@ public class Snake {
             int by = (int)tail.GridPos.Y - (int)tail.Direction.Y;
             int idx = GetIndex(bx, by);
             var newPart = new SnakeBodyPart {
-                GridPos = new Vec2(bx, by),
-                Direction = new Vec2(tail.Direction.X, tail.Direction.Y),
-                TargetScreenPos = idx >= 0 ? CenterCoords[idx].Copy() : tail.TargetScreenPos.Copy()
+                GridPos = new Vector2(bx, by),
+                Direction = tail.Direction,
+                TargetScreenPos = idx >= 0 ? CenterCoords[idx] : tail.TargetScreenPos
             };
-            newPart.CurrentScreenPos = newPart.TargetScreenPos.Copy();
-            newPart.StartScreenPos = newPart.TargetScreenPos.Copy();
+            newPart.CurrentScreenPos = newPart.TargetScreenPos;
+            newPart.StartScreenPos = newPart.TargetScreenPos;
             Parts.Add(newPart);
             SpawnFood();
         }
@@ -299,10 +338,10 @@ public class Snake {
         while (KeyQueue.Count > 0 && !processed) {
             int key = KeyQueue.Dequeue();
             switch (key) {
-                case 38: if (dir.Y != 1) { Head.Direction = new Vec2(0, -1); processed = true; } break;
-                case 40: if (dir.Y != -1) { Head.Direction = new Vec2(0, 1); processed = true; } break;
-                case 37: if (dir.X != 1) { Head.Direction = new Vec2(-1, 0); processed = true; } break;
-                case 39: if (dir.X != -1) { Head.Direction = new Vec2(1, 0); processed = true; } break;
+                case 38: if (dir.Y != 1) { Head.Direction = new Vector2(0, -1); processed = true; } break;
+                case 40: if (dir.Y != -1) { Head.Direction = new Vector2(0, 1); processed = true; } break;
+                case 37: if (dir.X != 1) { Head.Direction = new Vector2(-1, 0); processed = true; } break;
+                case 39: if (dir.X != -1) { Head.Direction = new Vector2(1, 0); processed = true; } break;
             }
         }
     }
@@ -312,8 +351,8 @@ public class Snake {
         CheckFoodCollision();
         for (int i = 0; i < Parts.Count; i++) {
             var part = Parts[i];
-            part.StartScreenPos.SetFrom(part.TargetScreenPos);
-            part.GridPos = part.GridPos.Add(part.Direction);
+            part.StartScreenPos = part.TargetScreenPos;
+            part.GridPos += part.Direction;
             if (i == 0) {
                 int gx = (int)part.GridPos.X, gy = (int)part.GridPos.Y;
                 if (gx < 0 || gx >= Cols || gy < 0 || gy >= Rows) { Die(); return; }
@@ -325,10 +364,10 @@ public class Snake {
                 }
             }
             int idx = GetIndex((int)part.GridPos.X, (int)part.GridPos.Y);
-            if (idx >= 0) part.TargetScreenPos.SetFrom(CenterCoords[idx]);
+            if (idx >= 0) part.TargetScreenPos = CenterCoords[idx];
         }
         for (int i = Parts.Count - 1; i > 0; i--)
-            Parts[i].Direction = new Vec2(Parts[i - 1].Direction.X, Parts[i - 1].Direction.Y);
+            Parts[i].Direction = Parts[i - 1].Direction;
     }
 
     public (double X, double Y)? GetNearestFoodPos() {
