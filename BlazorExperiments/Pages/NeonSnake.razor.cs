@@ -26,6 +26,8 @@ public partial class NeonSnake {
     bool _audioEnabled = true;
     double _obstacleInset = 0;
     double _obstacleSize = 0;
+    const int ObstaclePadding = 14;
+    double _cacheW = 0;
     readonly List<Vector2> _bodyPoints = new(256);
     static readonly (double Ox, double Oy, double Rx, double Ry, double A)[] EggSpeckles =
         [(-0.35, -0.18, 0.18, 0.09, 0.4), (0.38, 0.2, 0.13, 0.07, -0.6), (-0.1, 0.35, 0.1, 0.06, 0.9)];
@@ -39,6 +41,9 @@ public partial class NeonSnake {
         _cellSize = _canvas.CellSize;
         _obstacleInset = _cellSize * 0.08;
         _obstacleSize = _cellSize - _obstacleInset * 2;
+        _cacheW = _obstacleSize + ObstaclePadding * 2;
+        var dpr = _canvas.WindowProperties.DevicePixelRatio;
+        await JS.InvokeVoidAsync("neonSnakeCache.renderObstacle", _obstacleSize, ObstaclePadding, dpr);
         var raw = await JS.InvokeAsync<string?>("localStorage.getItem", BestScoreKey);
         int savedBest = int.TryParse(raw, out var v) ? v : 0;
         _snake = new NeonSnakeGame.Snake(_cellSize) {
@@ -195,40 +200,6 @@ public partial class NeonSnake {
     }
 
     async ValueTask DrawGridAsync(Batch2D ctx) {
-        var startCol = Math.Max(0, (int)Math.Floor(_snake.CamX / _cellSize));
-        var endCol = Math.Min(NeonSnakeGame.Snake.Cols, (int)Math.Ceiling((_snake.CamX + ScreenW) / _cellSize) + 1);
-        var startRow = Math.Max(0, (int)Math.Floor(_snake.CamY / _cellSize));
-        var endRow = Math.Min(NeonSnakeGame.Snake.Rows, (int)Math.Ceiling((_snake.CamY + ScreenH) / _cellSize) + 1);
-
-        var x0 = startCol * _cellSize;
-        var y0 = startRow * _cellSize;
-        var w = (endCol - startCol) * _cellSize;
-        var h = (endRow - startRow) * _cellSize;
-
-        await ctx.FillStyleAsync(0, y0, 0, y0 + h,
-            (0d, Neon.GridBase),
-            (1d, "#090f26"));
-        await ctx.FillRectAsync(x0, y0, w, h);
-
-        await ctx.StrokeStyleAsync(Neon.GridLine);
-        await ctx.LineWidthAsync(1);
-
-        await ctx.BeginPathAsync();
-        for (var c = startCol; c <= endCol; c++) {
-            var x = c * _cellSize + 0.5;
-            await ctx.MoveToAsync(x, y0);
-            await ctx.LineToAsync(x, y0 + h);
-        }
-        await ctx.StrokeAsync();
-
-        await ctx.BeginPathAsync();
-        for (var r = startRow; r <= endRow; r++) {
-            var y = r * _cellSize + 0.5;
-            await ctx.MoveToAsync(x0, y);
-            await ctx.LineToAsync(x0 + w, y);
-        }
-        await ctx.StrokeAsync();
-
         await ctx.SaveAsync();
         await ctx.StrokeStyleAsync(Neon.Border);
         await ctx.LineWidthAsync(4);
@@ -240,46 +211,13 @@ public partial class NeonSnake {
 
     async ValueTask DrawObstaclesAsync(Batch2D ctx) {
         foreach (var o in _snake.Obstacles) {
-            var ox = o.X * _cellSize + _obstacleInset;
-            var oy = o.Y * _cellSize + _obstacleInset;
+            var ox = o.X * _cellSize + _obstacleInset - ObstaclePadding;
+            var oy = o.Y * _cellSize + _obstacleInset - ObstaclePadding;
 
-            if (ox + _obstacleSize < _snake.CamX - _cellSize || ox > _snake.CamX + ScreenW + _cellSize) continue;
-            if (oy + _obstacleSize < _snake.CamY - _cellSize || oy > _snake.CamY + ScreenH + _cellSize) continue;
+            if (ox + _cacheW < _snake.CamX - _cellSize || ox > _snake.CamX + ScreenW + _cellSize) continue;
+            if (oy + _cacheW < _snake.CamY - _cellSize || oy > _snake.CamY + ScreenH + _cellSize) continue;
 
-            await ctx.SaveAsync();
-            await ctx.ShadowColorAsync(Neon.ObstacleGlow);
-            await ctx.ShadowBlurAsync(12);
-            await ctx.FillStyleAsync(ox, oy, ox + _obstacleSize, oy + _obstacleSize,
-                (0d, "#2a3b74"),
-                (1d, Neon.ObstacleBase));
-            await RockPathAsync(ox, oy);
-            await ctx.FillAsync(FillRule.NonZero);
-            await ctx.RestoreAsync();
-
-            await ctx.StrokeStyleAsync(Neon.ObstacleEdge);
-            await ctx.LineWidthAsync(1.5);
-            await RockPathAsync(ox, oy);
-            await ctx.StrokeAsync();
-
-            await ctx.StrokeStyleAsync("rgba(170,200,255,0.35)");
-            await ctx.LineWidthAsync(1);
-            await ctx.BeginPathAsync();
-            await ctx.MoveToAsync(ox + _obstacleSize * 0.22, oy + _obstacleSize * 0.35);
-            await ctx.LineToAsync(ox + _obstacleSize * 0.58, oy + _obstacleSize * 0.5);
-            await ctx.LineToAsync(ox + _obstacleSize * 0.74, oy + _obstacleSize * 0.72);
-            await ctx.StrokeAsync();
-        }
-
-        async ValueTask RockPathAsync(double ox, double oy) {
-            await ctx.BeginPathAsync();
-            await ctx.MoveToAsync(ox + _obstacleSize * 0.2, oy + _obstacleSize);
-            await ctx.LineToAsync(ox, oy + _obstacleSize * 0.5);
-            await ctx.LineToAsync(ox + _obstacleSize * 0.15, oy + _obstacleSize * 0.15);
-            await ctx.LineToAsync(ox + _obstacleSize * 0.5, oy);
-            await ctx.LineToAsync(ox + _obstacleSize * 0.85, oy + _obstacleSize * 0.1);
-            await ctx.LineToAsync(ox + _obstacleSize, oy + _obstacleSize * 0.45);
-            await ctx.LineToAsync(ox + _obstacleSize * 0.8, oy + _obstacleSize);
-            await ctx.ClosePathAsync();
+            await ctx.DrawImageAsync("obstacleCache", ox, oy, _cacheW, _cacheW);
         }
     }
 

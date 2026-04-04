@@ -4,6 +4,7 @@
 @using BlazorExperiments.UI.Shared
 
 @inject IJSRuntime JS
+<canvas id="obstacle-cache" style="display:none"></canvas>
 
 <CanvasComponent Id="hexagon"
                  InitializeAsync="InitializeAsync"
