@@ -12,7 +12,6 @@ public class Snake {
     public const double DeathAnimDuration = 1500;
 
     public readonly Vector2[] CenterCoords;
-    readonly Dictionary<(int Col, int Row), int> _validCells = [];
 
     public List<SnakeBodyPart> Parts = [];
     public SnakeBodyPart Head => Parts[0];
@@ -33,7 +32,10 @@ public class Snake {
     public double DeathTimer;
     public List<DeathSegment> DeathSegments = [];
     public bool ShowDeathScreen;
-    public Queue<int> KeyQueue = new();
+    public Queue<int> KeyQueue = new(3);
+
+    readonly double _eatDistSq;
+    readonly Dictionary<(int Col, int Row), int> _validCells;
 
     static readonly string[] EatColors = ["#ffe080", "#ffb840", "#fff4c0", "#ff9420", Neon.TextAccent];
     static readonly string[] DeathColors = [Neon.Danger, "#ff6a9d", Neon.TextAccent, "#8b5dff", "#ffc2ff"];
@@ -46,6 +48,9 @@ public class Snake {
         Rows = visibleRows * 5;
         WorldW = Cols * CellSize;
         WorldH = Rows * CellSize;
+        _eatDistSq = CellSize * (double)CellSize;
+        _validCells = new(Rows * Cols);
+
         CenterCoords = new Vector2[Cols * Rows];
         float centerOffset = CellSize * 0.5f;
         for (int y = 0; y < Rows; y++)
@@ -67,8 +72,9 @@ public class Snake {
         }
 
         int numObstacles = (int)(Cols * Rows * 0.02);
+        const int numFood = 50;
         for (int i = 0; i < numObstacles; i++) SpawnObstacle();
-        for (int i = 0; i < 50; i++) SpawnFood();
+        for (int i = 0; i < numFood; i++) SpawnFood();
     }
 
     public int GetIndex(int col, int row) {
@@ -130,7 +136,7 @@ public class Snake {
     }
 
     void StepEgg(Egg egg) {
-        Span<int> order = stackalloc int[4] { 0, 1, 2, 3 };
+        Span<int> order = [0, 1, 2, 3];
         for (int i = order.Length - 1; i > 0; i--) {
             int j = Random.Shared.Next(i + 1);
             (order[i], order[j]) = (order[j], order[i]);
@@ -236,6 +242,11 @@ public class Snake {
         }
 
         if (Dead) {
+            if (DeathTimer >= DeathAnimDuration) {
+                ShowDeathScreen = true;
+                return;
+            }
+
             DeathTimer += deltaTime;
             double progress = Math.Min(1, DeathTimer / DeathAnimDuration);
             for (int si = 0; si < DeathSegments.Count; si++) {
@@ -246,7 +257,6 @@ public class Snake {
                 seg.Alpha = Math.Max(0, 1 - progress * 0.8);
                 DeathSegments[si] = seg;
             }
-            if (DeathTimer >= DeathAnimDuration) ShowDeathScreen = true;
             return;
         }
 
@@ -300,11 +310,11 @@ public class Snake {
     }
 
     void CheckFoodCollision() {
-        double eatDistSq = CellSize * (double)CellSize;
+
         for (int fi = Food.Count - 1; fi >= 0; fi--) {
             var egg = Food[fi];
             double dx = Head.CurrentScreenPos.X - egg.ScreenX, dy = Head.CurrentScreenPos.Y - egg.ScreenY;
-            if (dx * dx + dy * dy >= eatDistSq) continue;
+            if (dx * dx + dy * dy >= _eatDistSq) continue;
             Score++;
             for (int p = 0; p < 8; p++) {
                 double angle = (p / 8.0) * Math.PI * 2 + Random.Shared.NextDouble() * 0.5;
@@ -334,6 +344,10 @@ public class Snake {
             Parts.Add(newPart);
             SpawnFood();
         }
+    }
+
+    public void AddCommand(int key) {
+        if (KeyQueue.Count < 3) KeyQueue.Enqueue(key);
     }
 
     void ProcessInput() {

@@ -708,11 +708,9 @@ public partial class NeonSnake {
         await ctx.BezierCurveToAsync(cx + size, cy - size * 0.6, cx, cy - size * 0.2, cx, cy + size * 0.35);
         await ctx.ClosePathAsync();
         await ctx.FillAsync(FillRule.NonZero);
-        if (!isOff) {
-            await ctx.RestoreAsync();
-        }
 
         if (!isOff) {
+            await ctx.RestoreAsync();
             await ctx.FillStyleAsync("rgba(255,255,255,0.45)");
             await ctx.BeginPathAsync();
             await ctx.ArcAsync(cx - size * 0.35, cy + size * 0.05, size * 0.25, 0, DoublePI);
@@ -776,7 +774,7 @@ public partial class NeonSnake {
         };
 
         if (mapped.HasValue) {
-            _snake.KeyQueue.Enqueue(mapped.Value);
+            _snake.AddCommand(mapped.Value);
         }
     }
 
@@ -804,10 +802,10 @@ public partial class NeonSnake {
 
         // most significant
         if (Math.Abs(xDiff) > Math.Abs(yDiff)) {
-            _snake.KeyQueue.Enqueue(xDiff > 0 ? KeyLeft : KeyRight);
+            _snake.AddCommand(xDiff > 0 ? KeyLeft : KeyRight);
         }
         else {
-            _snake.KeyQueue.Enqueue(yDiff > 0 ? KeyUp : KeyDown);
+            _snake.AddCommand(yDiff > 0 ? KeyUp : KeyDown);
         }
 
         _previousTouch = e.Touches[^1];

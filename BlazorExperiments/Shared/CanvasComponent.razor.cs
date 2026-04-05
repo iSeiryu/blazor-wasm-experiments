@@ -9,10 +9,10 @@ namespace BlazorExperiments.UI.Shared;
 public partial class CanvasComponent : IAsyncDisposable {
     string _style = "";
     double _devicePixelRatio = 1;
-    const int Margin = 50;
+    const int Margin = 20;
     const int MediaMinWidth = 641;
     const int SideBarWidth = 250;
-    const double Interval = 1_000 / 60; // 60 fps
+    const double Interval = 1_000 / 30; // 60 fps
 
     double _fps = 0;
 

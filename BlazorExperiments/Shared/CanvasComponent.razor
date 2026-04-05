@@ -5,7 +5,7 @@
 
 <div id="canvas-container"
      tabindex="0"
-     style="width: @(Width + 4)px; height: @(Height + 4)px !important; display: grid; align-items: center; justify-content: center;touch-action: none;"
+     style="width: @(Width + 4)px; height: @(Height + 4)px !important; display: grid; align-items: center; justify-content: center; touch-action: pinch-zoom;"
      @onkeydown="HandleKeyDown"
      @onkeydown:preventDefault="true"
      @onmouseup="@(async (mouseEventArgs) => await HandleMouseUp(mouseEventArgs))"
