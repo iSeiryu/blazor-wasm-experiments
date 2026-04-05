@@ -71,6 +71,7 @@ public partial class NeonSnake {
     private async ValueTask LoopAsync(ElapsedEventArgs elapsedEvent) {
         var now = elapsedEvent.SignalTime;
         var dt = (now - _lastTick).TotalMilliseconds;
+        if (dt < 16.67) return;
         _lastTick = now;
 
         var scoreBefore = _snake.Score;
@@ -88,66 +89,6 @@ public partial class NeonSnake {
 
         await using var batch = _canvas.Context.CreateBatch();
         await DrawAsync(batch);
-    }
-
-    void HandleInput(KeyboardEventArgs e) {
-        if (_snake is null) return;
-
-        if (_snake.ShowDeathScreen && (e.Code == "Space" || e.Key == " " || e.Key == "Spacebar")) {
-            _snake = new NeonSnakeGame.Snake(_cellSize, _canvas.CellsPerRow, _visibleRows);
-            _lastTick = DateTime.UtcNow;
-            return;
-        }
-
-        int? mapped = e.Key switch {
-            "ArrowUp" => KeyUp,
-            "ArrowDown" => KeyDown,
-            "ArrowLeft" => KeyLeft,
-            "ArrowRight" => KeyRight,
-            _ => e.Code switch {
-                "ArrowUp" => KeyUp,
-                "ArrowDown" => KeyDown,
-                "ArrowLeft" => KeyLeft,
-                "ArrowRight" => KeyRight,
-                _ => null
-            }
-        };
-
-        if (mapped.HasValue) {
-            _snake.KeyQueue.Enqueue(mapped.Value);
-        }
-    }
-
-    void HandleTouchStart(TouchEventArgs e) {
-        if (_snake.ShowDeathScreen) {
-            _snake = new NeonSnakeGame.Snake(_cellSize, _canvas.CellsPerRow, _visibleRows);
-            _lastTick = DateTime.UtcNow;
-            return;
-        }
-
-        _previousTouch = e?.Touches.FirstOrDefault();
-    }
-
-    void HandleTouchMove(TouchEventArgs e) {
-        if (_previousTouch == null)
-            return;
-
-        const int sensitivity = 10;
-        var xDiff = _previousTouch.ClientX - e.Touches[0].ClientX;
-        var yDiff = _previousTouch.ClientY - e.Touches[0].ClientY;
-
-        if (Math.Abs(xDiff) < sensitivity && Math.Abs(yDiff) < sensitivity)
-            return;
-
-        // most significant
-        if (Math.Abs(xDiff) > Math.Abs(yDiff)) {
-            _snake.KeyQueue.Enqueue(xDiff > 0 ? KeyLeft : KeyRight);
-        }
-        else {
-            _snake.KeyQueue.Enqueue(yDiff > 0 ? KeyUp : KeyDown);
-        }
-
-        _previousTouch = e.Touches[^1];
     }
 
     async ValueTask PlaySoundAsync(string fn) {
@@ -188,7 +129,7 @@ public partial class NeonSnake {
         if (_snake.CamX < borderMargin || _snake.CamY < borderMargin ||
             _snake.CamX + _screenW > _snake.WorldW - borderMargin ||
             _snake.CamY + _gameAreaH > _snake.WorldH - borderMargin) {
-            await DrawGridAsync(ctx);
+            await DrawBorderAsync(ctx);
         }
 
         await DrawObstaclesAsync(ctx);
@@ -218,7 +159,7 @@ public partial class NeonSnake {
         }
     }
 
-    async ValueTask DrawGridAsync(Batch2D ctx) {
+    async ValueTask DrawBorderAsync(Batch2D ctx) {
         await ctx.SaveAsync();
         await ctx.StrokeStyleAsync(Neon.Border);
         await ctx.LineWidthAsync(4);
@@ -793,4 +734,66 @@ public partial class NeonSnake {
         await ctx.FillTextAsync(_isMobile ? "Tap to restart" : "Press SPACE to restart", _screenW / 2d, cy + 80);
         await ctx.TextAlignAsync(TextAlign.Start);
     }
+
+    #region Input Handling
+    void HandleInput(KeyboardEventArgs e) {
+        if (_snake is null) return;
+
+        if (_snake.ShowDeathScreen && (e.Code == "Space" || e.Key == " " || e.Key == "Spacebar")) {
+            _snake = new NeonSnakeGame.Snake(_cellSize, _canvas.CellsPerRow, _visibleRows);
+            _lastTick = DateTime.UtcNow;
+            return;
+        }
+
+        int? mapped = e.Key switch {
+            "ArrowUp" => KeyUp,
+            "ArrowDown" => KeyDown,
+            "ArrowLeft" => KeyLeft,
+            "ArrowRight" => KeyRight,
+            _ => e.Code switch {
+                "ArrowUp" => KeyUp,
+                "ArrowDown" => KeyDown,
+                "ArrowLeft" => KeyLeft,
+                "ArrowRight" => KeyRight,
+                _ => null
+            }
+        };
+
+        if (mapped.HasValue) {
+            _snake.KeyQueue.Enqueue(mapped.Value);
+        }
+    }
+
+    void HandleTouchStart(TouchEventArgs e) {
+        if (_snake.ShowDeathScreen) {
+            _snake = new NeonSnakeGame.Snake(_cellSize, _canvas.CellsPerRow, _visibleRows);
+            _lastTick = DateTime.UtcNow;
+            return;
+        }
+
+        _previousTouch = e?.Touches.FirstOrDefault();
+    }
+
+    void HandleTouchMove(TouchEventArgs e) {
+        if (_previousTouch == null)
+            return;
+
+        const int sensitivity = 10;
+        var xDiff = _previousTouch.ClientX - e.Touches[0].ClientX;
+        var yDiff = _previousTouch.ClientY - e.Touches[0].ClientY;
+
+        if (Math.Abs(xDiff) < sensitivity && Math.Abs(yDiff) < sensitivity)
+            return;
+
+        // most significant
+        if (Math.Abs(xDiff) > Math.Abs(yDiff)) {
+            _snake.KeyQueue.Enqueue(xDiff > 0 ? KeyLeft : KeyRight);
+        }
+        else {
+            _snake.KeyQueue.Enqueue(yDiff > 0 ? KeyUp : KeyDown);
+        }
+
+        _previousTouch = e.Touches[^1];
+    }
+    #endregion
 }

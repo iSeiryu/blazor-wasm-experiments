@@ -12,6 +12,7 @@ public class Snake {
     public const double DeathAnimDuration = 1500;
 
     public readonly Vector2[] CenterCoords;
+    readonly Dictionary<(int Col, int Row), int> _validCells = [];
 
     public List<SnakeBodyPart> Parts = [];
     public SnakeBodyPart Head => Parts[0];
@@ -48,8 +49,10 @@ public class Snake {
         CenterCoords = new Vector2[Cols * Rows];
         float centerOffset = CellSize * 0.5f;
         for (int y = 0; y < Rows; y++)
-            for (int x = 0; x < Cols; x++)
+            for (int x = 0; x < Cols; x++) {
                 CenterCoords[y * Cols + x] = new Vector2(x * CellSize + centerOffset, y * CellSize + centerOffset);
+                _validCells.Add((x, y), y * Cols + x);
+            }
 
         int startCol = Cols / 2, startRow = Rows / 2;
         for (int i = 0; i < 3; i++) {
@@ -69,8 +72,7 @@ public class Snake {
     }
 
     public int GetIndex(int col, int row) {
-        if (col < 0 || col >= Cols || row < 0 || row >= Rows) return -1;
-        return row * Cols + col;
+        return _validCells.TryGetValue((col, row), out var value) ? value : -1;
     }
 
     bool IsOccupied(int px, int py) {
