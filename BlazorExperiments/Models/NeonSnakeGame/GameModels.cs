@@ -55,4 +55,9 @@ public static class Neon {
     public const string HeartOff = "#2b335a";
     public const string Danger = "#ff3f72";
     public const string DangerGlow = "rgba(255,63,114,0.75)";
+    public const string MonsterBody = "#c43000";
+    public const string MonsterGlow = "rgba(255,100,0,0.85)";
+    public const string MonsterEye = "#ffe000";
+    public const string MonsterSleep = "#6633aa";
+    public const string MonsterSleepGlow = "rgba(100,40,180,0.5)";
 }

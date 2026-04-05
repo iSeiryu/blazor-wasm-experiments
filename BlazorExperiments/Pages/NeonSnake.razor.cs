@@ -67,6 +67,7 @@ public partial class NeonSnake {
 
         _lastTick = DateTime.UtcNow;
         _canvas.Timer.Enabled = true;
+        await PlaySoundAsync("neonSnakeAudio.startMusic");
         StateHasChanged();
     }
 
@@ -80,6 +81,8 @@ public partial class NeonSnake {
         var healthBefore = _snake.Health;
         var bestBefore = _snake.BestScore;
         var deadBefore = _snake.Dead;
+        var monstersKilledBefore = _snake.MonstersKilled;
+        var eggsHatchedBefore = _snake.EggsHatched;
 
         _snake.Update(dt, _screenW, _gameAreaH);
 
@@ -89,6 +92,8 @@ public partial class NeonSnake {
             await PlaySoundAsync("neonSnakeAudio.playDeathSound");
             await JS.InvokeVoidAsync("localStorage.setItem", BestScoreKey, _snake.BestScore);
         }
+        if (_snake.MonstersKilled > monstersKilledBefore) await PlaySoundAsync("neonSnakeAudio.playMonsterDeathSound");
+        if (_snake.EggsHatched > eggsHatchedBefore) await PlaySoundAsync("neonSnakeAudio.playEggHatchSound");
 
         if (_snake.Score != scoreBefore || _snake.Health != healthBefore || _snake.BestScore != bestBefore) {
             _hudDirty = true;
@@ -144,6 +149,7 @@ public partial class NeonSnake {
 
         await DrawObstaclesAsync(ctx);
         await DrawEggsAsync(ctx);
+        await DrawMonstersAsync(ctx);
 
         if (_snake.Dead && _snake.DeathSegments.Count > 0) {
             await DrawDeathSegmentsAsync(ctx);
@@ -530,6 +536,107 @@ public partial class NeonSnake {
         }
 
         await ctx.RestoreAsync();
+
+        if (_snake.InvincibleTimer > 0) {
+            var pulse = (Math.Sin(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 0.012) + 1) * 0.5;
+            await ctx.SaveAsync();
+            await ctx.GlobalAlphaAsync(0.35 + pulse * 0.5);
+            await ctx.StrokeStyleAsync("rgba(150,230,255,0.9)");
+            await ctx.ShadowColorAsync("rgba(100,200,255,0.95)");
+            await ctx.ShadowBlurAsync(25);
+            await ctx.LineWidthAsync(2.5);
+            await ctx.BeginPathAsync();
+            await ctx.ArcAsync(pos.X, pos.Y, hr * 1.6, 0, DoublePI);
+            await ctx.StrokeAsync();
+            await ctx.RestoreAsync();
+        }
+    }
+
+    async ValueTask DrawMonstersAsync(Batch2D ctx) {
+        var r = _cellSize * 0.44;
+        var camX = _snake.CamX;
+        var camY = _snake.CamY;
+        var cullMargin = _cellSize * 2d;
+        const int spikes = 6;
+
+        foreach (var m in _snake.Monsters) {
+            var x = m.ScreenX;
+            var y = m.ScreenY;
+
+            if (x + cullMargin < camX || x - cullMargin > camX + _screenW) continue;
+            if (y + cullMargin < camY || y - cullMargin > camY + _gameAreaH) continue;
+
+            var awake = m.Awake;
+
+            // Drop shadow
+            await ctx.FillStyleAsync("rgba(0,0,0,0.3)");
+            await ctx.BeginPathAsync();
+            await ctx.ArcAsync(x + 2, y + 3, r * 0.85, 0, DoublePI);
+            await ctx.FillAsync(FillRule.NonZero);
+
+            // Spiky body with glow
+            await ctx.SaveAsync();
+            await ctx.ShadowColorAsync(awake ? Neon.MonsterGlow : Neon.MonsterSleepGlow);
+            await ctx.ShadowBlurAsync(awake ? 24 : 10);
+            await ctx.FillStyleAsync(awake ? Neon.MonsterBody : Neon.MonsterSleep);
+            var innerR = r * 0.72;
+            await ctx.BeginPathAsync();
+            for (var i = 0; i < spikes * 2; i++) {
+                var a = (i / (double)(spikes * 2)) * DoublePI - HalfPI;
+                var rad = i % 2 == 0 ? r : innerR;
+                var px = x + Math.Cos(a) * rad;
+                var py = y + Math.Sin(a) * rad;
+                if (i == 0) await ctx.MoveToAsync(px, py);
+                else await ctx.LineToAsync(px, py);
+            }
+            await ctx.ClosePathAsync();
+            await ctx.FillAsync(FillRule.NonZero);
+            await ctx.RestoreAsync();
+
+            // Eyes
+            var eyeR = r * 0.18;
+            var eyeOff = r * 0.27;
+            if (awake) {
+                for (var side = -1; side <= 1; side += 2) {
+                    var ex = x + side * eyeOff;
+                    var ey = y - r * 0.12;
+
+                    // Angry eyebrow
+                    await ctx.StrokeStyleAsync(Neon.MonsterEye);
+                    await ctx.LineWidthAsync(2);
+                    await ctx.LineCapAsync(LineCap.Round);
+                    await ctx.BeginPathAsync();
+                    await ctx.MoveToAsync(ex - eyeR * 1.2, ey - eyeR * 1.1 - side * eyeR * 0.6);
+                    await ctx.LineToAsync(ex + eyeR * 1.2, ey - eyeR * 1.1 + side * eyeR * 0.6);
+                    await ctx.StrokeAsync();
+
+                    // Eye white
+                    await ctx.FillStyleAsync("rgba(255,255,210,0.95)");
+                    await ctx.BeginPathAsync();
+                    await ctx.ArcAsync(ex, ey, eyeR, 0, DoublePI);
+                    await ctx.FillAsync(FillRule.NonZero);
+
+                    // Pupil
+                    await ctx.FillStyleAsync("#1a0500");
+                    await ctx.BeginPathAsync();
+                    await ctx.ArcAsync(ex, ey, eyeR * 0.52, 0, DoublePI);
+                    await ctx.FillAsync(FillRule.NonZero);
+                }
+            } else {
+                // Sleeping: closed-eye lines
+                await ctx.StrokeStyleAsync("rgba(180,140,255,0.7)");
+                await ctx.LineWidthAsync(2);
+                await ctx.LineCapAsync(LineCap.Round);
+                for (var side = -1; side <= 1; side += 2) {
+                    var ex = x + side * eyeOff;
+                    var ey = y - r * 0.08;
+                    await ctx.BeginPathAsync();
+                    await ctx.MoveToAsync(ex - r * 0.14, ey);
+                    await ctx.LineToAsync(ex + r * 0.14, ey);
+                    await ctx.StrokeAsync();
+                }
+            }
+        }
     }
 
     async ValueTask DrawParticlesAsync(Batch2D ctx) {

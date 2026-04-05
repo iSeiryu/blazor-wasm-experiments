@@ -33,6 +33,10 @@ public class Snake {
     public List<DeathSegment> DeathSegments = [];
     public bool ShowDeathScreen;
     public Queue<int> KeyQueue = new(3);
+    public List<Monster> Monsters = [];
+    public double InvincibleTimer;
+    public int MonstersKilled;
+    public int EggsHatched;
 
     readonly double _eatDistSq;
     readonly Dictionary<(int Col, int Row), int> _validCells;
@@ -40,6 +44,7 @@ public class Snake {
     static readonly string[] EatColors = ["#ffe080", "#ffb840", "#fff4c0", "#ff9420", Neon.TextAccent];
     static readonly string[] DeathColors = [Neon.Danger, "#ff6a9d", Neon.TextAccent, "#8b5dff", "#ffc2ff"];
     static readonly string[] RockColors = ["#3d4a7f", "#4f63a1", "#32406e", "#6b7fd1", "#5868a8"];
+    static readonly string[] MonsterDeathColors = ["#ff6600", "#ff3300", "#ffcc00", "#ff9900", "#ff4488"];
     static readonly Vector2[] CardinalDirs = [new(1, 0), new(-1, 0), new(0, 1), new(0, -1)];
 
     public Snake(int cellSize, int visibleCols, int visibleRows) {
@@ -73,8 +78,10 @@ public class Snake {
 
         int numObstacles = (int)(Cols * Rows * 0.02);
         const int numFood = 50;
+        const int numMonsters = 10;
         for (int i = 0; i < numObstacles; i++) SpawnObstacle();
         for (int i = 0; i < numFood; i++) SpawnFood();
+        for (int i = 0; i < numMonsters; i++) SpawnMonster();
     }
 
     public int GetIndex(int col, int row) {
@@ -88,6 +95,8 @@ public class Snake {
             if (f.X == px && f.Y == py) return true;
         foreach (var o in Obstacles)
             if ((int)o.X == px && (int)o.Y == py) return true;
+        foreach (var m in Monsters)
+            if (m.X == px && m.Y == py) return true;
         return false;
     }
 
@@ -114,6 +123,41 @@ public class Snake {
             TargetScreenX = cc.X,
             TargetScreenY = cc.Y
         });
+    }
+
+    void SpawnMonster() {
+        int px, py;
+        int startCol = Cols / 2, startRow = Rows / 2;
+        do {
+            px = Random.Shared.Next(Cols);
+            py = Random.Shared.Next(Rows);
+        } while (IsOccupied(px, py) || (Math.Abs(px - startCol) < 20 && Math.Abs(py - startRow) < 20));
+        int idx = GetIndex(px, py);
+        var cc = CenterCoords[idx];
+        Monsters.Add(new Monster {
+            X = px, Y = py,
+            ScreenX = cc.X, ScreenY = cc.Y,
+            StartScreenX = cc.X, StartScreenY = cc.Y,
+            TargetScreenX = cc.X, TargetScreenY = cc.Y
+        });
+    }
+
+    void StepMonster(Monster m) {
+        int headGX = (int)Head.GridPos.X, headGY = (int)Head.GridPos.Y;
+        int distX = headGX - m.X, distY = headGY - m.Y;
+        int absX = Math.Abs(distX), absY = Math.Abs(distY);
+        int sx = Math.Sign(distX), sy = Math.Sign(distY);
+        // Sort 4 cardinal directions: primary axis (largest distance) first
+        (int dx, int dy)[] tries = absX >= absY
+            ? [(sx, 0), (0, sy), (0, -sy), (-sx, 0)]
+            : [(0, sy), (sx, 0), (-sx, 0), (0, -sy)];
+        foreach (var (dx, dy) in tries) {
+            if (dx == 0 && dy == 0) continue;
+            int nx = m.X + dx, ny = m.Y + dy;
+            if (nx >= 0 && nx < Cols && ny >= 0 && ny < Rows) {
+                m.X = nx; m.Y = ny; return;
+            }
+        }
     }
 
     Vector2 RandomRunDir() => CardinalDirs[Random.Shared.Next(CardinalDirs.Length)];
@@ -275,6 +319,7 @@ public class Snake {
         CamX = Head.CurrentScreenPos.X - screenW / 2;
         CamY = Head.CurrentScreenPos.Y - screenH / 2;
         if (EatBounce > 0) EatBounce = Math.Max(0, EatBounce - deltaTime / 300);
+        if (InvincibleTimer > 0) InvincibleTimer = Math.Max(0, InvincibleTimer - deltaTime);
 
         foreach (var egg in Food) {
             if (!egg.Running) {
@@ -290,6 +335,7 @@ public class Snake {
                         egg.Running = true; egg.RunDir = RandomRunDir(); egg.RunAccum = 0;
                         egg.StartScreenX = cc.X; egg.StartScreenY = cc.Y;
                         egg.TargetScreenX = cc.X; egg.TargetScreenY = cc.Y;
+                        EggsHatched++;
                     }
                 }
             }
@@ -304,6 +350,75 @@ public class Snake {
                     StepEgg(egg);
                     int idx = GetIndex(egg.X, egg.Y);
                     if (idx >= 0) { var nc = CenterCoords[idx]; egg.TargetScreenX = nc.X; egg.TargetScreenY = nc.Y; }
+                }
+            }
+        }
+
+        // Update monsters
+        int headGX = (int)Head.GridPos.X, headGY = (int)Head.GridPos.Y;
+        double headSX = Head.CurrentScreenPos.X, headSY = Head.CurrentScreenPos.Y;
+        for (int mi = Monsters.Count - 1; mi >= 0; mi--) {
+            var m = Monsters[mi];
+
+            // Wake up when snake comes within 10 cells (Euclidean)
+            if (!m.Awake) {
+                double wdx = m.X - headGX, wdy = m.Y - headGY;
+                if (wdx * wdx + wdy * wdy <= 100) m.Awake = true;
+            }
+
+            if (!m.Awake) {
+                // Sleeping: snap to grid
+                int sidx = GetIndex(m.X, m.Y);
+                if (sidx >= 0) { var cc = CenterCoords[sidx]; m.ScreenX = cc.X; m.ScreenY = cc.Y; }
+                continue;
+            }
+
+            // Interpolate screen position
+            double mt = m.MoveAccum / 500.0;
+            m.ScreenX = m.StartScreenX + (m.TargetScreenX - m.StartScreenX) * mt;
+            m.ScreenY = m.StartScreenY + (m.TargetScreenY - m.StartScreenY) * mt;
+            m.MoveAccum += deltaTime;
+
+            if (m.MoveAccum >= 500) {
+                m.MoveAccum -= 500;
+                m.StartScreenX = m.TargetScreenX; m.StartScreenY = m.TargetScreenY;
+                StepMonster(m);
+                int midx = GetIndex(m.X, m.Y);
+                if (midx >= 0) { var nc = CenterCoords[midx]; m.TargetScreenX = nc.X; m.TargetScreenY = nc.Y; }
+            }
+
+            // Check collision with body parts (not head) -> monster dies
+            bool monsterKilled = false;
+            for (int bi = 1; bi < Parts.Count; bi++) {
+                double bdx = m.ScreenX - Parts[bi].CurrentScreenPos.X;
+                double bdy = m.ScreenY - Parts[bi].CurrentScreenPos.Y;
+                if (bdx * bdx + bdy * bdy < _eatDistSq) { monsterKilled = true; break; }
+            }
+            if (monsterKilled) {
+                for (int p = 0; p < 12; p++) {
+                    double angle = (p / 12.0) * Math.PI * 2 + Random.Shared.NextDouble() * 0.5;
+                    double speed = 3 + Random.Shared.NextDouble() * 5;
+                    HitParticles.Add(new HitParticle {
+                        X = m.ScreenX, Y = m.ScreenY,
+                        Vx = Math.Cos(angle) * speed, Vy = Math.Sin(angle) * speed,
+                        Life = 1.0,
+                        Size = 4 + Random.Shared.NextDouble() * 6,
+                        Color = MonsterDeathColors[p % 5],
+                        Rotation = Random.Shared.NextDouble() * Math.PI * 2,
+                        RotSpeed = (Random.Shared.NextDouble() - 0.5) * 0.4
+                    });
+                }
+                MonstersKilled++;
+                Monsters.RemoveAt(mi); continue;
+            }
+
+            // Check collision with head -> lose heart (if not invincible)
+            if (InvincibleTimer <= 0) {
+                double hdx = m.ScreenX - headSX, hdy = m.ScreenY - headSY;
+                if (hdx * hdx + hdy * hdy < _eatDistSq) {
+                    InvincibleTimer = 2000;
+                    LoseHeart();
+                    if (Dead) return;
                 }
             }
         }
