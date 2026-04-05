@@ -8,7 +8,7 @@
     <BlazorEnableTimeZoneSupport>false</BlazorEnableTimeZoneSupport>
     <BlazorWebAssemblyPreserveCollationData>false</BlazorWebAssemblyPreserveCollationData>
     <WasmExceptionHandling>true</WasmExceptionHandling>
-    <WasmSIMD>false</WasmSIMD>
+    <WasmSIMD>true</WasmSIMD>
   </PropertyGroup>
 
   <ItemGroup>

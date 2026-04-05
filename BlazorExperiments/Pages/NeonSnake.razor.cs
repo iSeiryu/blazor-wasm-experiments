@@ -15,6 +15,7 @@ public partial class NeonSnake {
     const int KeyDown = 40;
     const int KeyLeft = 37;
     const int KeyRight = 39;
+    const double DoublePI = Math.PI * 2;
     double _screenW, _screenH, _gameAreaH;
     int _visibleRows;
 
@@ -26,13 +27,12 @@ public partial class NeonSnake {
     bool _audioEnabled = true;
     double _obstacleInset = 0;
     double _obstacleSize = 0;
+    double _baseR, _tailR;
     const int ObstaclePadding = 14;
     double _cacheW = 0;
     double _eggEr, _eggEh, _eggCacheSize;
     const int EggCachePadding = 20;
     readonly List<Vector2> _bodyPoints = new(256);
-    static readonly (double Ox, double Oy, double Rx, double Ry, double A)[] EggSpeckles =
-        [(-0.35, -0.18, 0.18, 0.09, 0.4), (0.38, 0.2, 0.13, 0.07, -0.6), (-0.1, 0.35, 0.1, 0.06, 0.9)];
     static readonly (double Offset, string Color)[] TailGradientStops = [(0d, "#9bb6ff"), (1d, Neon.SnakeSecondary)];
     int _lastScore, _lastBestScore;
     string _scoreText = "Score: 0";
@@ -40,6 +40,7 @@ public partial class NeonSnake {
     const string BestScoreKey = "neonSnakeBestScore";
 
     public async Task InitializeAsync() {
+        _canvas.Timer.Enabled = false;
         _cellSize = _canvas.CellSize;
         _screenW = _canvas.Width;
         _screenH = _canvas.Height;
@@ -48,10 +49,12 @@ public partial class NeonSnake {
         _obstacleInset = _cellSize * 0.08;
         _obstacleSize = _cellSize - _obstacleInset * 2;
         _cacheW = _obstacleSize + ObstaclePadding * 2;
-        var dpr = _canvas.WindowProperties.DevicePixelRatio;
-        await JS.InvokeVoidAsync("neonSnakeCache.renderObstacle", _obstacleSize, ObstaclePadding, dpr);
+        _baseR = _cellSize * 0.44;
+        _tailR = _baseR * 0.35;
         _eggEr = _cellSize * 0.22;
         _eggEh = _cellSize * 0.3;
+        var dpr = _canvas.WindowProperties.DevicePixelRatio;
+        await JS.InvokeVoidAsync("neonSnakeCache.renderObstacle", _obstacleSize, ObstaclePadding, dpr);
         _eggCacheSize = await JS.InvokeAsync<double>("neonSnakeEggCache.renderStaticEgg", _eggEr, _eggEh, EggCachePadding, dpr);
         await JS.InvokeVoidAsync("neonSnakeEggCache.renderRunningEgg", _eggEr, _eggEh, EggCachePadding, dpr);
         var raw = await JS.InvokeAsync<string?>("localStorage.getItem", BestScoreKey);
@@ -238,16 +241,13 @@ public partial class NeonSnake {
     }
 
     async ValueTask DrawEggsAsync(Batch2D ctx) {
-        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        var er = _eggEr;
-        var eh = _eggEh;
         var halfCache = _eggCacheSize * 0.5;
         var camX = _snake.CamX;
         var camY = _snake.CamY;
         var viewRight = camX + _screenW;
         var viewBottom = camY + _gameAreaH;
         var cullMargin = _cellSize * 1.5;
-        var glowMargin = _cellSize * 0.5;
+        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
         // Pass 1: non-running (static) eggs — use cached sprite
         foreach (var egg in _snake.Food) {
@@ -266,11 +266,11 @@ public partial class NeonSnake {
 
             // Timer ring (dynamic per egg)
             var frac = Math.Max(0, egg.Timer / 5000);
-            var ringR = eh * 1.48;
+            var ringR = _eggEh * 1.48;
             await ctx.StrokeStyleAsync("rgba(60,200,175,0.2)");
             await ctx.LineWidthAsync(2.2);
             await ctx.BeginPathAsync();
-            await ctx.ArcAsync(cx, dy, ringR, 0, Math.PI * 2);
+            await ctx.ArcAsync(cx, dy, ringR, 0, DoublePI);
             await ctx.StrokeAsync();
 
             var tColor = frac > 0.6 ? "#38ffda" : frac > 0.3 ? "#ffd050" : "#ff6830";
@@ -281,13 +281,13 @@ public partial class NeonSnake {
             await ctx.LineWidthAsync(2.2);
             await ctx.LineCapAsync(LineCap.Round);
             await ctx.BeginPathAsync();
-            await ctx.ArcAsync(cx, dy, ringR, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
+            await ctx.ArcAsync(cx, dy, ringR, -Math.PI / 2, -Math.PI / 2 + frac * DoublePI);
             await ctx.StrokeAsync();
             await ctx.RestoreAsync();
         }
 
         // Pass 2: running eggs — cached sprite + animated legs & eyes
-        var walkPhase = (now * 0.007) % (Math.PI * 2);
+        var walkPhase = (now * 0.007) % DoublePI;
         foreach (var egg in _snake.Food) {
             if (!egg.Running) continue;
             var cx = egg.ScreenX;
@@ -302,18 +302,18 @@ public partial class NeonSnake {
             for (var si = 0; si < 2; si++) {
                 var side = si == 0 ? -1 : 1;
                 var extend = 0.65 + 0.35 * Math.Sin(walkPhase + (si == 0 ? 0 : Math.PI));
-                var lx = cx + side * er * 0.5;
-                var ly = dy + eh * 0.7;
-                var lw = er * 0.48;
-                var lh = eh * 0.72 * extend;
+                var lx = cx + side * _eggEr * 0.5;
+                var ly = dy + _eggEh * 0.7;
+                var lw = _eggEr * 0.48;
+                var lh = _eggEh * 0.72 * extend;
 
                 await ctx.FillStyleAsync("#ffdc96");
                 await ctx.FillRectAsync(lx - lw / 2, ly, lw, lh);
 
-                var footDirX = egg.RunDir.X != 0 ? egg.RunDir.X * er * 0.2 : 0;
+                var footDirX = egg.RunDir.X != 0 ? egg.RunDir.X * _eggEr * 0.2 : 0;
                 await ctx.FillStyleAsync("#ffb855");
                 await ctx.BeginPathAsync();
-                await ctx.EllipseAsync(lx + footDirX, ly + lh, lw * 0.95, lw * 0.52, 0, 0, Math.PI * 2);
+                await ctx.EllipseAsync(lx + footDirX, ly + lh, lw * 0.95, lw * 0.52, 0, 0, DoublePI);
                 await ctx.FillAsync(FillRule.NonZero);
             }
 
@@ -322,38 +322,35 @@ public partial class NeonSnake {
 
             // Animated eyes
             var rd = egg.RunDir;
-            var eyeR = er * 0.165;
-            var eyeCx = cx + rd.X * er * 0.38;
-            var eyeCy = dy + rd.Y * eh * 0.38;
+            var eyeR = _eggEr * 0.165;
+            var eyeCx = cx + rd.X * _eggEr * 0.38;
+            var eyeCy = dy + rd.Y * _eggEh * 0.38;
             var perpX = -rd.Y;
             var perpY = rd.X;
 
             for (var side = -1; side <= 1; side += 2) {
-                var ex = eyeCx + perpX * er * 0.28 * side;
-                var ey = eyeCy + perpY * eh * 0.28 * side;
+                var ex = eyeCx + perpX * _eggEr * 0.28 * side;
+                var ey = eyeCy + perpY * _eggEh * 0.28 * side;
                 await ctx.FillStyleAsync("rgba(248,252,255,0.95)");
                 await ctx.BeginPathAsync();
-                await ctx.ArcAsync(ex, ey, eyeR, 0, Math.PI * 2);
+                await ctx.ArcAsync(ex, ey, eyeR, 0, DoublePI);
                 await ctx.FillAsync(FillRule.NonZero);
 
                 await ctx.FillStyleAsync("#18103a");
                 await ctx.BeginPathAsync();
-                await ctx.ArcAsync(ex + rd.X * eyeR * 0.22, ey + rd.Y * eyeR * 0.22, eyeR * 0.55, 0, Math.PI * 2);
+                await ctx.ArcAsync(ex + rd.X * eyeR * 0.22, ey + rd.Y * eyeR * 0.22, eyeR * 0.55, 0, DoublePI);
                 await ctx.FillAsync(FillRule.NonZero);
 
                 await ctx.FillStyleAsync("rgba(255,255,255,0.88)");
                 await ctx.BeginPathAsync();
-                await ctx.ArcAsync(ex - eyeR * 0.2, ey - eyeR * 0.2, eyeR * 0.24, 0, Math.PI * 2);
+                await ctx.ArcAsync(ex - eyeR * 0.2, ey - eyeR * 0.2, eyeR * 0.24, 0, DoublePI);
                 await ctx.FillAsync(FillRule.NonZero);
             }
         }
     }
 
-    (double X, double Y)? GetNearestFoodPos() => _snake.GetNearestFoodPos();
-
     async ValueTask DrawSnakeBodyAsync(Batch2D ctx) {
-        var baseR = _cellSize * 0.44;
-        var tailR = baseR * 0.35;
+
         var bodyPoints = _bodyPoints;
         bodyPoints.Clear();
         for (var i = _snake.Parts.Count - 1; i >= 0; i--) {
@@ -386,7 +383,7 @@ public partial class NeonSnake {
 
         await ctx.SaveAsync();
         await ctx.StrokeStyleAsync("rgba(0,0,0,0.25)");
-        await ctx.LineWidthAsync(baseR * 2.2);
+        await ctx.LineWidthAsync(_baseR * 2.2);
         await ctx.TranslateAsync(1.5, 2);
         await TraceBodyPathAsync();
         await ctx.StrokeAsync();
@@ -399,20 +396,20 @@ public partial class NeonSnake {
             (0d, Neon.SnakeSecondary),
             (0.55, "#4fb9ff"),
             (1d, Neon.SnakePrimary));
-        await ctx.LineWidthAsync(baseR * 2.05);
+        await ctx.LineWidthAsync(_baseR * 2.05);
         await TraceBodyPathAsync();
         await ctx.StrokeAsync();
         await ctx.RestoreAsync();
 
         await ctx.StrokeStyleAsync("rgba(170, 238, 255, 0.7)");
-        await ctx.LineWidthAsync(baseR * 1.12);
+        await ctx.LineWidthAsync(_baseR * 1.12);
         await TraceBodyPathAsync();
         await ctx.StrokeAsync();
 
         await ctx.StrokeStyleAsync("rgba(255,255,255,0.24)");
-        await ctx.LineWidthAsync(baseR * 0.48);
+        await ctx.LineWidthAsync(_baseR * 0.48);
         await ctx.SaveAsync();
-        await ctx.TranslateAsync(0, -baseR * 0.14);
+        await ctx.TranslateAsync(0, -_baseR * 0.14);
         await TraceBodyPathAsync();
         await ctx.StrokeAsync();
         await ctx.RestoreAsync();
@@ -420,9 +417,9 @@ public partial class NeonSnake {
         await ctx.SaveAsync();
         await ctx.TranslateAsync(tail.X, tail.Y);
         await ctx.RotateAsync(tailAngle);
-        await ctx.FillStyleAsync(-tailR * 0.5, -tailR * 0.2, tailR * 0.2, 0, 0, tailR * 1.4, TailGradientStops);
+        await ctx.FillStyleAsync(-_tailR * 0.5, -_tailR * 0.2, _tailR * 0.2, 0, 0, _tailR * 1.4, TailGradientStops);
         await ctx.BeginPathAsync();
-        await ctx.EllipseAsync(0, 0, tailR * 1.2, tailR * 0.9, 0, 0, Math.PI * 2);
+        await ctx.EllipseAsync(0, 0, _tailR * 1.2, _tailR * 0.9, 0, 0, DoublePI);
         await ctx.FillAsync(FillRule.NonZero);
         await ctx.RestoreAsync();
     }
@@ -477,18 +474,18 @@ public partial class NeonSnake {
 
         await ctx.FillStyleAsync("rgba(255,255,255,0.3)");
         await ctx.BeginPathAsync();
-        await ctx.EllipseAsync(-hr * 0.14, -hr * 0.36, hr * 0.4, hr * 0.17, -0.35, 0, Math.PI * 2);
+        await ctx.EllipseAsync(-hr * 0.14, -hr * 0.36, hr * 0.4, hr * 0.17, -0.35, 0, DoublePI);
         await ctx.FillAsync(FillRule.NonZero);
 
         await ctx.FillStyleAsync("rgba(255, 145, 215, 0.28)");
         await ctx.BeginPathAsync();
-        await ctx.EllipseAsync(hr * 0.14, -hr * 0.54, hr * 0.14, hr * 0.09, 0, 0, Math.PI * 2);
+        await ctx.EllipseAsync(hr * 0.14, -hr * 0.54, hr * 0.14, hr * 0.09, 0, 0, DoublePI);
         await ctx.FillAsync(FillRule.NonZero);
         await ctx.BeginPathAsync();
-        await ctx.EllipseAsync(hr * 0.14, hr * 0.54, hr * 0.14, hr * 0.09, 0, 0, Math.PI * 2);
+        await ctx.EllipseAsync(hr * 0.14, hr * 0.54, hr * 0.14, hr * 0.09, 0, 0, DoublePI);
         await ctx.FillAsync(FillRule.NonZero);
 
-        var foodPos = GetNearestFoodPos();
+        var foodPos = _snake.GetNearestFoodPos();
         var eyeR = hr * 0.21;
         var eyeX = hr * 0.06;
         var eyeY = hr * 0.5;
@@ -499,13 +496,13 @@ public partial class NeonSnake {
 
             await ctx.FillStyleAsync("rgba(238,255,255,0.98)");
             await ctx.BeginPathAsync();
-            await ctx.ArcAsync(ex, ey, eyeR, 0, Math.PI * 2);
+            await ctx.ArcAsync(ex, ey, eyeR, 0, DoublePI);
             await ctx.FillAsync(FillRule.NonZero);
 
             await ctx.StrokeStyleAsync("rgba(130, 195, 255, 0.8)");
             await ctx.LineWidthAsync(1.2);
             await ctx.BeginPathAsync();
-            await ctx.ArcAsync(ex, ey, eyeR, 0, Math.PI * 2);
+            await ctx.ArcAsync(ex, ey, eyeR, 0, DoublePI);
             await ctx.StrokeAsync();
 
             var lookX = 1d;
@@ -527,36 +524,36 @@ public partial class NeonSnake {
 
             await ctx.FillStyleAsync("#2a2060");
             await ctx.BeginPathAsync();
-            await ctx.ArcAsync(pupilX, pupilY, eyeR * 0.48, 0, Math.PI * 2);
+            await ctx.ArcAsync(pupilX, pupilY, eyeR * 0.48, 0, DoublePI);
             await ctx.FillAsync(FillRule.NonZero);
 
             await ctx.FillStyleAsync("rgba(255,255,255,0.92)");
             await ctx.BeginPathAsync();
-            await ctx.ArcAsync(pupilX - eyeR * 0.16, pupilY - eyeR * 0.14, eyeR * 0.18, 0, Math.PI * 2);
+            await ctx.ArcAsync(pupilX - eyeR * 0.16, pupilY - eyeR * 0.14, eyeR * 0.18, 0, DoublePI);
             await ctx.FillAsync(FillRule.NonZero);
 
             await ctx.FillStyleAsync("rgba(255,255,255,0.5)");
             await ctx.BeginPathAsync();
-            await ctx.ArcAsync(pupilX + eyeR * 0.1, pupilY + eyeR * 0.14, eyeR * 0.08, 0, Math.PI * 2);
+            await ctx.ArcAsync(pupilX + eyeR * 0.1, pupilY + eyeR * 0.14, eyeR * 0.08, 0, DoublePI);
             await ctx.FillAsync(FillRule.NonZero);
         }
 
         await ctx.FillStyleAsync("rgba(25, 45, 105, 0.5)");
         await ctx.BeginPathAsync();
-        await ctx.ArcAsync(hr * 0.46, -hr * 0.1, hr * 0.042, 0, Math.PI * 2);
+        await ctx.ArcAsync(hr * 0.46, -hr * 0.1, hr * 0.042, 0, DoublePI);
         await ctx.FillAsync(FillRule.NonZero);
         await ctx.BeginPathAsync();
-        await ctx.ArcAsync(hr * 0.46, hr * 0.1, hr * 0.042, 0, Math.PI * 2);
+        await ctx.ArcAsync(hr * 0.46, hr * 0.1, hr * 0.042, 0, DoublePI);
         await ctx.FillAsync(FillRule.NonZero);
 
         if (_snake.EatBounce > 0.3) {
             await ctx.FillStyleAsync("#ff60bc");
             await ctx.BeginPathAsync();
-            await ctx.EllipseAsync(hr * 0.76, 0, hr * 0.32, hr * 0.60, 0, 0, Math.PI * 2);
+            await ctx.EllipseAsync(hr * 0.76, 0, hr * 0.32, hr * 0.60, 0, 0, DoublePI);
             await ctx.FillAsync(FillRule.NonZero);
             await ctx.FillStyleAsync("#ffd8f4");
             await ctx.BeginPathAsync();
-            await ctx.ArcAsync(hr * 0.76, 0, hr * 0.152, 0, Math.PI * 2);
+            await ctx.ArcAsync(hr * 0.76, 0, hr * 0.152, 0, DoublePI);
             await ctx.FillAsync(FillRule.NonZero);
         }
 
@@ -582,6 +579,8 @@ public partial class NeonSnake {
     }
 
     async ValueTask DrawParticlesAsync(Batch2D ctx) {
+        if (_snake.EatParticles.Count == 0) return;
+
         foreach (var p in _snake.EatParticles) {
             var size = 4 * p.Life;
             await ctx.GlobalAlphaAsync(p.Life);
@@ -591,7 +590,7 @@ public partial class NeonSnake {
 
             await ctx.BeginPathAsync();
             for (var s = 0; s < 5; s++) {
-                var a = (s / 5d) * Math.PI * 2 - Math.PI / 2;
+                var a = (s / 5d) * DoublePI - Math.PI / 2;
                 var ox = Math.Cos(a) * size;
                 var oy = Math.Sin(a) * size;
                 if (s == 0) {
@@ -614,6 +613,8 @@ public partial class NeonSnake {
     }
 
     async ValueTask DrawHitParticlesAsync(Batch2D ctx) {
+        if (_snake.HitParticles.Count == 0) return;
+
         foreach (var p in _snake.HitParticles) {
             await ctx.GlobalAlphaAsync(p.Life);
             await ctx.FillStyleAsync(p.Color);
@@ -658,7 +659,7 @@ public partial class NeonSnake {
             var r = seg.R * (1 - progress * 0.4);
             await ctx.FillStyleAsync("rgba(0,0,0,0.22)");
             await ctx.BeginPathAsync();
-            await ctx.ArcAsync(1.5, 2, r, 0, Math.PI * 2);
+            await ctx.ArcAsync(1.5, 2, r, 0, DoublePI);
             await ctx.FillAsync(FillRule.NonZero);
 
             var baseColor = i % 2 == 0 ? Neon.SnakePrimary : Neon.SnakeSecondary;
@@ -666,13 +667,13 @@ public partial class NeonSnake {
             await ctx.ShadowColorAsync(flashOn ? Neon.DangerGlow : Neon.SnakeGlow);
             await ctx.ShadowBlurAsync(14);
             await ctx.BeginPathAsync();
-            await ctx.ArcAsync(0, 0, r, 0, Math.PI * 2);
+            await ctx.ArcAsync(0, 0, r, 0, DoublePI);
             await ctx.FillAsync(FillRule.NonZero);
             await ctx.ShadowBlurAsync(0);
 
             await ctx.FillStyleAsync("rgba(255,255,255,0.35)");
             await ctx.BeginPathAsync();
-            await ctx.ArcAsync(-r * 0.25, -r * 0.25, r * 0.35, 0, Math.PI * 2);
+            await ctx.ArcAsync(-r * 0.25, -r * 0.25, r * 0.35, 0, DoublePI);
             await ctx.FillAsync(FillRule.NonZero);
 
             if (seg.IsHead && progress < 0.6) {
@@ -758,7 +759,7 @@ public partial class NeonSnake {
         if (!isOff) {
             await ctx.FillStyleAsync("rgba(255,255,255,0.45)");
             await ctx.BeginPathAsync();
-            await ctx.ArcAsync(cx - size * 0.35, cy + size * 0.05, size * 0.25, 0, Math.PI * 2);
+            await ctx.ArcAsync(cx - size * 0.35, cy + size * 0.05, size * 0.25, 0, DoublePI);
             await ctx.FillAsync(FillRule.NonZero);
         }
     }

@@ -41,8 +41,8 @@ public class Snake {
 
     public Snake(int cellSize, int visibleCols, int visibleRows) {
         CellSize = cellSize;
-        Cols = visibleCols * 6;
-        Rows = visibleRows * 6;
+        Cols = visibleCols * 5;
+        Rows = visibleRows * 5;
         WorldW = Cols * CellSize;
         WorldH = Rows * CellSize;
         CenterCoords = new Vector2[Cols * Rows];
