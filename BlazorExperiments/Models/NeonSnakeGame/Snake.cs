@@ -5,10 +5,10 @@ namespace BlazorExperiments.UI.Models.NeonSnakeGame;
 public class Snake {
     public const int HudH = 50;
     public int CellSize = 1;
-    public const int Cols = 28 * 6;   // 168
-    public const int Rows = 18 * 6;   // 108
-    public int WorldW = Cols;
-    public int WorldH = Rows;
+    public readonly int Cols;
+    public readonly int Rows;
+    public int WorldW;
+    public int WorldH;
     public const double DeathAnimDuration = 1500;
 
     public readonly Vector2[] CenterCoords;
@@ -39,8 +39,10 @@ public class Snake {
     static readonly string[] RockColors = ["#3d4a7f", "#4f63a1", "#32406e", "#6b7fd1", "#5868a8"];
     static readonly Vector2[] CardinalDirs = [new(1, 0), new(-1, 0), new(0, 1), new(0, -1)];
 
-    public Snake(int cellSize) {
+    public Snake(int cellSize, int visibleCols, int visibleRows) {
         CellSize = cellSize;
+        Cols = visibleCols * 6;
+        Rows = visibleRows * 6;
         WorldW = Cols * CellSize;
         WorldH = Rows * CellSize;
         CenterCoords = new Vector2[Cols * Rows];

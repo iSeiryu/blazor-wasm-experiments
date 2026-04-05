@@ -18,11 +18,12 @@
 </CanvasComponent>
 
 @code {
+    bool _isMobile = false;
     protected override async Task OnInitializedAsync()
     {
-        var isMobile = await JS.InvokeAsync<bool>("isMobile");
+        _isMobile = await JS.InvokeAsync<bool>("isMobile");
         _canvas.CellsPerRow = 28;
-        if (isMobile)
+        if (_isMobile)
         {
             _canvas.CellsPerRow = 10;
         }
