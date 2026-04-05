@@ -16,6 +16,7 @@ public partial class NeonSnake {
     const int KeyLeft = 37;
     const int KeyRight = 39;
     const double DoublePI = Math.PI * 2;
+    const double HalfPI = Math.PI / 2;
     double _screenW, _screenH, _gameAreaH;
     int _visibleRows;
 
@@ -37,6 +38,7 @@ public partial class NeonSnake {
     int _lastScore, _lastBestScore;
     string _scoreText = "Score: 0";
     string _bestText = "Best: 0";
+    bool _hudDirty = true;
     const string BestScoreKey = "neonSnakeBestScore";
 
     public async Task InitializeAsync() {
@@ -76,6 +78,7 @@ public partial class NeonSnake {
 
         var scoreBefore = _snake.Score;
         var healthBefore = _snake.Health;
+        var bestBefore = _snake.BestScore;
         var deadBefore = _snake.Dead;
 
         _snake.Update(dt, _screenW, _gameAreaH);
@@ -85,6 +88,10 @@ public partial class NeonSnake {
         if (!deadBefore && _snake.Dead) {
             await PlaySoundAsync("neonSnakeAudio.playDeathSound");
             await JS.InvokeVoidAsync("localStorage.setItem", BestScoreKey, _snake.BestScore);
+        }
+
+        if (_snake.Score != scoreBefore || _snake.Health != healthBefore || _snake.BestScore != bestBefore) {
+            _hudDirty = true;
         }
 
         await using var batch = _canvas.Context.CreateBatch();
@@ -102,17 +109,17 @@ public partial class NeonSnake {
     }
 
     async ValueTask DrawAsync(Batch2D ctx) {
-        await ctx.ClearRectAsync(0, 0, _screenW, _screenH);
+        await ctx.ClearRectAsync(0, NeonSnakeGame.Snake.HudH, _screenW, _gameAreaH);
 
-        await ctx.FillStyleAsync(0, 0, 0, _screenH,
+        await ctx.FillStyleAsync(0, NeonSnakeGame.Snake.HudH, 0, _screenH,
             (0d, Neon.BgOuter),
             (1d, Neon.BgInner));
-        await ctx.FillRectAsync(0, 0, _screenW, _screenH);
+        await ctx.FillRectAsync(0, NeonSnakeGame.Snake.HudH, _screenW, _gameAreaH);
 
         await ctx.FillStyleAsync(_screenW * 0.5, _screenH * 0.55, _screenW * 0.2, _screenW * 0.5, _screenH * 0.55, _screenW * 0.85,
             (0d, "rgba(0,0,0,0)"),
             (1d, "rgba(0,0,0,0.38)"));
-        await ctx.FillRectAsync(0, 0, _screenW, _screenH);
+        await ctx.FillRectAsync(0, NeonSnakeGame.Snake.HudH, _screenW, _gameAreaH);
 
         var shakeX = 0d;
         var shakeY = 0d;
@@ -123,6 +130,9 @@ public partial class NeonSnake {
         }
 
         await ctx.SaveAsync();
+        await ctx.BeginPathAsync();
+        await ctx.RectAsync(0, NeonSnakeGame.Snake.HudH, _screenW, _gameAreaH);
+        await ctx.ClipAsync(FillRule.NonZero);
         await ctx.TranslateAsync(-_snake.CamX + shakeX, -_snake.CamY + NeonSnakeGame.Snake.HudH + shakeY);
 
         const int borderMargin = 26; // lineWidth/2 + shadowBlur
@@ -153,7 +163,10 @@ public partial class NeonSnake {
             await ctx.FillRectAsync(0, NeonSnakeGame.Snake.HudH, _screenW, _gameAreaH);
         }
 
-        await DrawHudAsync(ctx);
+        if (_hudDirty) {
+            await DrawHudAsync(ctx);
+            _hudDirty = false;
+        }
         if (_snake.ShowDeathScreen) {
             await DrawDeathScreenAsync(ctx);
         }
@@ -222,7 +235,7 @@ public partial class NeonSnake {
             await ctx.LineWidthAsync(2.2);
             await ctx.LineCapAsync(LineCap.Round);
             await ctx.BeginPathAsync();
-            await ctx.ArcAsync(cx, dy, ringR, -Math.PI / 2, -Math.PI / 2 + frac * DoublePI);
+            await ctx.ArcAsync(cx, dy, ringR, -HalfPI, -HalfPI + frac * DoublePI);
             await ctx.StrokeAsync();
             await ctx.RestoreAsync();
         }
@@ -522,16 +535,17 @@ public partial class NeonSnake {
     async ValueTask DrawParticlesAsync(Batch2D ctx) {
         if (_snake.EatParticles.Count == 0) return;
 
+        await ctx.ShadowBlurAsync(14);
+
         foreach (var p in _snake.EatParticles) {
             var size = 4 * p.Life;
             await ctx.GlobalAlphaAsync(p.Life);
             await ctx.FillStyleAsync(p.Color);
             await ctx.ShadowColorAsync(p.Color);
-            await ctx.ShadowBlurAsync(14);
 
             await ctx.BeginPathAsync();
             for (var s = 0; s < 5; s++) {
-                var a = (s / 5d) * DoublePI - Math.PI / 2;
+                var a = (s / 5d) * DoublePI - HalfPI;
                 var ox = Math.Cos(a) * size;
                 var oy = Math.Sin(a) * size;
                 if (s == 0) {
@@ -556,6 +570,8 @@ public partial class NeonSnake {
     async ValueTask DrawHitParticlesAsync(Batch2D ctx) {
         if (_snake.HitParticles.Count == 0) return;
 
+        await ctx.ShadowBlurAsync(10);
+
         foreach (var p in _snake.HitParticles) {
             await ctx.GlobalAlphaAsync(p.Life);
             await ctx.FillStyleAsync(p.Color);
@@ -563,7 +579,6 @@ public partial class NeonSnake {
             await ctx.TranslateAsync(p.X, p.Y);
             await ctx.RotateAsync(p.Rotation);
             await ctx.ShadowColorAsync(p.Color);
-            await ctx.ShadowBlurAsync(10);
 
             var s = p.Size;
             await ctx.BeginPathAsync();
@@ -741,6 +756,7 @@ public partial class NeonSnake {
 
         if (_snake.ShowDeathScreen && (e.Code == "Space" || e.Key == " " || e.Key == "Spacebar")) {
             _snake = new NeonSnakeGame.Snake(_cellSize, _canvas.CellsPerRow, _visibleRows);
+            _hudDirty = true;
             _lastTick = DateTime.UtcNow;
             return;
         }
@@ -767,6 +783,7 @@ public partial class NeonSnake {
     void HandleTouchStart(TouchEventArgs e) {
         if (_snake.ShowDeathScreen) {
             _snake = new NeonSnakeGame.Snake(_cellSize, _canvas.CellsPerRow, _visibleRows);
+            _hudDirty = true;
             _lastTick = DateTime.UtcNow;
             return;
         }
