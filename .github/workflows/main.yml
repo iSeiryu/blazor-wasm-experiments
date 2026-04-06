@@ -34,7 +34,7 @@ jobs:
       - name: Publish .NET Project
         run: dotnet publish BlazorExperiments/BlazorExperiments.UI.csproj -c Release -o release --nologo
       - name: Publish .NET Project with AOT
-        run: dotnet publish BlazorExperiments/BlazorExperiments.UI.csproj -c Release -p:RunAOTCompilation=true -p:WasmStripILAfterAOT=true -o release-aot --nologo
+        run: dotnet publish BlazorExperiments/BlazorExperiments.UI.csproj -c Release -p:RunAOTCompilation=true -p:WasmStripILAfterAOT=true -p:PublishTrimmed=true -p:TrimMode=full -o release-aot --nologo
       - name: check current directory
         run: ls -la release-aot/wwwroot && pwd 
       - name: Fix base path for Blazor AOT app

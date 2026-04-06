@@ -10,7 +10,7 @@ using NeonSnakeGame = BlazorExperiments.UI.Models.NeonSnakeGame;
 
 namespace BlazorExperiments.UI.Pages;
 
-public partial class NeonSnake {
+public partial class NeonSnake : IAsyncDisposable {
     const int KeyUp = 38;
     const int KeyDown = 40;
     const int KeyLeft = 37;
@@ -39,6 +39,7 @@ public partial class NeonSnake {
     string _scoreText = "Score: 0";
     string _bestText = "Best: 0";
     bool _hudDirty = true;
+    bool _loopInProgress = false;
     const string BestScoreKey = "neonSnakeBestScore";
 
     public async Task InitializeAsync() {
@@ -72,9 +73,11 @@ public partial class NeonSnake {
     }
 
     private async ValueTask LoopAsync(ElapsedEventArgs elapsedEvent) {
+        if (_loopInProgress) return;
+
+        _loopInProgress = true;
         var now = elapsedEvent.SignalTime;
         var dt = (now - _lastTick).TotalMilliseconds;
-        if (dt < 16.67) return;
         _lastTick = now;
 
         var scoreBefore = _snake.Score;
@@ -89,6 +92,7 @@ public partial class NeonSnake {
         if (_snake.Score > scoreBefore) await PlaySoundAsync("neonSnakeAudio.playEatSound");
         if (_snake.Health < healthBefore) await PlaySoundAsync("neonSnakeAudio.playHitSound");
         if (!deadBefore && _snake.Dead) {
+            await PlaySoundAsync("neonSnakeAudio.stopMusic");
             await PlaySoundAsync("neonSnakeAudio.playDeathSound");
             await JS.InvokeVoidAsync("localStorage.setItem", BestScoreKey, _snake.BestScore);
         }
@@ -101,6 +105,7 @@ public partial class NeonSnake {
 
         await using var batch = _canvas.Context.CreateBatch();
         await DrawAsync(batch);
+        _loopInProgress = false;
     }
 
     async ValueTask PlaySoundAsync(string fn) {
@@ -622,7 +627,8 @@ public partial class NeonSnake {
                     await ctx.ArcAsync(ex, ey, eyeR * 0.52, 0, DoublePI);
                     await ctx.FillAsync(FillRule.NonZero);
                 }
-            } else {
+            }
+            else {
                 // Sleeping: closed-eye lines
                 await ctx.StrokeStyleAsync("rgba(180,140,255,0.7)");
                 await ctx.LineWidthAsync(2);
@@ -855,14 +861,19 @@ public partial class NeonSnake {
         await ctx.TextAlignAsync(TextAlign.Start);
     }
 
+    async ValueTask RestartGame() {
+        _snake = new NeonSnakeGame.Snake(_cellSize, _canvas.CellsPerRow, _visibleRows);
+        _hudDirty = true;
+        _lastTick = DateTime.UtcNow;
+        _ = PlaySoundAsync("neonSnakeAudio.startMusic");
+    }
+
     #region Input Handling
     void HandleInput(KeyboardEventArgs e) {
         if (_snake is null) return;
 
         if (_snake.ShowDeathScreen && (e.Code == "Space" || e.Key == " " || e.Key == "Spacebar")) {
-            _snake = new NeonSnakeGame.Snake(_cellSize, _canvas.CellsPerRow, _visibleRows);
-            _hudDirty = true;
-            _lastTick = DateTime.UtcNow;
+            _ = RestartGame();
             return;
         }
 
@@ -887,9 +898,7 @@ public partial class NeonSnake {
 
     void HandleTouchStart(TouchEventArgs e) {
         if (_snake.ShowDeathScreen) {
-            _snake = new NeonSnakeGame.Snake(_cellSize, _canvas.CellsPerRow, _visibleRows);
-            _hudDirty = true;
-            _lastTick = DateTime.UtcNow;
+            _ = RestartGame();
             return;
         }
 
@@ -918,4 +927,8 @@ public partial class NeonSnake {
         _previousTouch = e.Touches[^1];
     }
     #endregion
+
+    public async ValueTask DisposeAsync() {
+        await PlaySoundAsync("neonSnakeAudio.dispose");
+    }
 }

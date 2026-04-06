@@ -1,13 +1,10 @@
 window.neonSnakeAudio = (() => {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
     let audioCtx = null;
     let masterGain = null;
 
     const getCtx = () => {
-        if (!AudioCtx) return null;
-
         if (!audioCtx) {
-            audioCtx = new AudioCtx();
+            audioCtx = new AudioContext();
             masterGain = audioCtx.createGain();
             masterGain.connect(audioCtx.destination);
         }
@@ -117,8 +114,6 @@ window.neonSnakeAudio = (() => {
         }
     };
 
-    audioCtx = getCtx();
-
     // ── Monster death: electronic zap burst ─────────────────────────────────
     const playMonsterDeathSound = () => {
         try {
@@ -190,6 +185,8 @@ window.neonSnakeAudio = (() => {
         { f: 0,     v: 0     }, // rest
         { f: 220,   v: 0.075 }, // A3 (accent)
     ];
+
+    audioCtx = getCtx();
 
     let musicPlaying = false;
     let musicNoteIndex = 0;
@@ -293,6 +290,11 @@ window.neonSnakeAudio = (() => {
         droneOscs = []; droneGains = [];
     };
 
+    const dispose = () => {
+        audioCtx && audioCtx.close();
+        audioCtx = null;
+    }
+
     return {
         playEatSound,
         playHitSound,
@@ -300,6 +302,7 @@ window.neonSnakeAudio = (() => {
         playMonsterDeathSound,
         playEggHatchSound,
         startMusic,
-        stopMusic
+        stopMusic,
+        dispose
     };
 })();
