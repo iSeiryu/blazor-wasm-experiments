@@ -92,11 +92,11 @@ public class Snake {
         foreach (var part in Parts)
             if ((int)part.GridPos.X == px && (int)part.GridPos.Y == py) return true;
         foreach (var f in Food)
-            if (f.X == px && f.Y == py) return true;
+            if ((int)f.GridPos.X == px && (int)f.GridPos.Y == py) return true;
         foreach (var o in Obstacles)
             if ((int)o.X == px && (int)o.Y == py) return true;
         foreach (var m in Monsters)
-            if (m.X == px && m.Y == py) return true;
+            if ((int)m.GridPos.X == px && (int)m.GridPos.Y == py) return true;
         return false;
     }
 
@@ -114,14 +114,10 @@ public class Snake {
         int idx = GetIndex(px, py);
         var cc = CenterCoords[idx];
         Food.Add(new Egg {
-            X = px,
-            Y = py,
-            ScreenX = cc.X,
-            ScreenY = cc.Y,
-            StartScreenX = cc.X,
-            StartScreenY = cc.Y,
-            TargetScreenX = cc.X,
-            TargetScreenY = cc.Y
+            GridPos = new Vector2(px, py),
+            ScreenPos = cc,
+            StartScreenPos = cc,
+            TargetScreenPos = cc
         });
     }
 
@@ -135,16 +131,16 @@ public class Snake {
         int idx = GetIndex(px, py);
         var cc = CenterCoords[idx];
         Monsters.Add(new Monster {
-            X = px, Y = py,
-            ScreenX = cc.X, ScreenY = cc.Y,
-            StartScreenX = cc.X, StartScreenY = cc.Y,
-            TargetScreenX = cc.X, TargetScreenY = cc.Y
+            GridPos = new Vector2(px, py),
+            ScreenPos = cc,
+            StartScreenPos = cc,
+            TargetScreenPos = cc
         });
     }
 
     void StepMonster(Monster m) {
         int headGX = (int)Head.GridPos.X, headGY = (int)Head.GridPos.Y;
-        int distX = headGX - m.X, distY = headGY - m.Y;
+        int distX = headGX - (int)m.GridPos.X, distY = headGY - (int)m.GridPos.Y;
         int absX = Math.Abs(distX), absY = Math.Abs(distY);
         int sx = Math.Sign(distX), sy = Math.Sign(distY);
         // Sort 4 cardinal directions: primary axis (largest distance) first
@@ -153,9 +149,9 @@ public class Snake {
             : [(0, sy), (sx, 0), (-sx, 0), (0, -sy)];
         foreach (var (dx, dy) in tries) {
             if (dx == 0 && dy == 0) continue;
-            int nx = m.X + dx, ny = m.Y + dy;
+            int nx = (int)m.GridPos.X + dx, ny = (int)m.GridPos.Y + dy;
             if (nx >= 0 && nx < Cols && ny >= 0 && ny < Rows) {
-                m.X = nx; m.Y = ny; return;
+                m.GridPos = new Vector2(nx, ny); return;
             }
         }
     }
@@ -175,7 +171,7 @@ public class Snake {
         foreach (var o in Obstacles)
             if ((int)o.X == x && (int)o.Y == y) return true;
         foreach (var f in Food)
-            if (f != skipEgg && f.X == x && f.Y == y) return true;
+            if (f != skipEgg && (int)f.GridPos.X == x && (int)f.GridPos.Y == y) return true;
         return false;
     }
 
@@ -199,8 +195,8 @@ public class Snake {
 
         foreach (int idx in order) {
             var d = CardinalDirs[idx];
-            int nx = egg.X + (int)d.X, ny = egg.Y + (int)d.Y;
-            if (!EggBlocked(nx, ny, egg)) { egg.X = nx; egg.Y = ny; egg.RunDir = d; return; }
+            int nx = (int)egg.GridPos.X + (int)d.X, ny = (int)egg.GridPos.Y + (int)d.Y;
+            if (!EggBlocked(nx, ny, egg)) { egg.GridPos = new Vector2(nx, ny); egg.RunDir = d; return; }
         }
     }
 
@@ -323,33 +319,32 @@ public class Snake {
 
         foreach (var egg in Food) {
             if (!egg.Running) {
-                int idx = GetIndex(egg.X, egg.Y);
+                int idx = GetIndex((int)egg.GridPos.X, (int)egg.GridPos.Y);
                 if (idx < 0) continue;
                 var cc = CenterCoords[idx];
-                egg.ScreenX = cc.X; egg.ScreenY = cc.Y;
+                egg.ScreenPos = cc;
                 bool onScreen = cc.X > CamX - CellSize && cc.X < CamX + screenW + CellSize &&
                                 cc.Y > CamY - CellSize && cc.Y < CamY + screenH + CellSize;
                 if (onScreen) {
                     egg.Timer -= deltaTime;
                     if (egg.Timer <= 0) {
                         egg.Running = true; egg.RunDir = RandomRunDir(); egg.RunAccum = 0;
-                        egg.StartScreenX = cc.X; egg.StartScreenY = cc.Y;
-                        egg.TargetScreenX = cc.X; egg.TargetScreenY = cc.Y;
+                        egg.StartScreenPos = cc;
+                        egg.TargetScreenPos = cc;
                         EggsHatched++;
                     }
                 }
             }
             else {
                 double t = egg.RunAccum / 500.0;
-                egg.ScreenX = egg.StartScreenX + (egg.TargetScreenX - egg.StartScreenX) * t;
-                egg.ScreenY = egg.StartScreenY + (egg.TargetScreenY - egg.StartScreenY) * t;
+                egg.ScreenPos = egg.StartScreenPos + (egg.TargetScreenPos - egg.StartScreenPos) * (float)t;
                 egg.RunAccum += deltaTime;
                 if (egg.RunAccum >= 500) {
                     egg.RunAccum -= 500;
-                    egg.StartScreenX = egg.TargetScreenX; egg.StartScreenY = egg.TargetScreenY;
+                    egg.StartScreenPos = egg.TargetScreenPos;
                     StepEgg(egg);
-                    int idx = GetIndex(egg.X, egg.Y);
-                    if (idx >= 0) { var nc = CenterCoords[idx]; egg.TargetScreenX = nc.X; egg.TargetScreenY = nc.Y; }
+                    int idx = GetIndex((int)egg.GridPos.X, (int)egg.GridPos.Y);
+                    if (idx >= 0) egg.TargetScreenPos = CenterCoords[idx];
                 }
             }
         }
@@ -362,36 +357,35 @@ public class Snake {
 
             // Wake up when snake comes within 10 cells (Euclidean)
             if (!m.Awake) {
-                double wdx = m.X - headGX, wdy = m.Y - headGY;
+                double wdx = (int)m.GridPos.X - headGX, wdy = (int)m.GridPos.Y - headGY;
                 if (wdx * wdx + wdy * wdy <= 100) m.Awake = true;
             }
 
             if (!m.Awake) {
                 // Sleeping: snap to grid
-                int sidx = GetIndex(m.X, m.Y);
-                if (sidx >= 0) { var cc = CenterCoords[sidx]; m.ScreenX = cc.X; m.ScreenY = cc.Y; }
+                int sidx = GetIndex((int)m.GridPos.X, (int)m.GridPos.Y);
+                if (sidx >= 0) m.ScreenPos = CenterCoords[sidx];
                 continue;
             }
 
             // Interpolate screen position
             double mt = m.MoveAccum / 500.0;
-            m.ScreenX = m.StartScreenX + (m.TargetScreenX - m.StartScreenX) * mt;
-            m.ScreenY = m.StartScreenY + (m.TargetScreenY - m.StartScreenY) * mt;
+            m.ScreenPos = m.StartScreenPos + (m.TargetScreenPos - m.StartScreenPos) * (float)mt;
             m.MoveAccum += deltaTime;
 
             if (m.MoveAccum >= 500) {
                 m.MoveAccum -= 500;
-                m.StartScreenX = m.TargetScreenX; m.StartScreenY = m.TargetScreenY;
+                m.StartScreenPos = m.TargetScreenPos;
                 StepMonster(m);
-                int midx = GetIndex(m.X, m.Y);
-                if (midx >= 0) { var nc = CenterCoords[midx]; m.TargetScreenX = nc.X; m.TargetScreenY = nc.Y; }
+                int midx = GetIndex((int)m.GridPos.X, (int)m.GridPos.Y);
+                if (midx >= 0) m.TargetScreenPos = CenterCoords[midx];
             }
 
             // Check collision with body parts (not head) -> monster dies
             bool monsterKilled = false;
             for (int bi = 1; bi < Parts.Count; bi++) {
-                double bdx = m.ScreenX - Parts[bi].CurrentScreenPos.X;
-                double bdy = m.ScreenY - Parts[bi].CurrentScreenPos.Y;
+                double bdx = m.ScreenPos.X - Parts[bi].CurrentScreenPos.X;
+                double bdy = m.ScreenPos.Y - Parts[bi].CurrentScreenPos.Y;
                 if (bdx * bdx + bdy * bdy < _eatDistSq) { monsterKilled = true; break; }
             }
             if (monsterKilled) {
@@ -399,7 +393,7 @@ public class Snake {
                     double angle = (p / 12.0) * Math.PI * 2 + Random.Shared.NextDouble() * 0.5;
                     double speed = 3 + Random.Shared.NextDouble() * 5;
                     HitParticles.Add(new HitParticle {
-                        X = m.ScreenX, Y = m.ScreenY,
+                        X = m.ScreenPos.X, Y = m.ScreenPos.Y,
                         Vx = Math.Cos(angle) * speed, Vy = Math.Sin(angle) * speed,
                         Life = 1.0,
                         Size = 4 + Random.Shared.NextDouble() * 6,
@@ -414,7 +408,7 @@ public class Snake {
 
             // Check collision with head -> lose heart (if not invincible)
             if (InvincibleTimer <= 0) {
-                double hdx = m.ScreenX - headSX, hdy = m.ScreenY - headSY;
+                double hdx = m.ScreenPos.X - headSX, hdy = m.ScreenPos.Y - headSY;
                 if (hdx * hdx + hdy * hdy < _eatDistSq) {
                     InvincibleTimer = 2000;
                     LoseHeart();
@@ -425,18 +419,17 @@ public class Snake {
     }
 
     void CheckFoodCollision() {
-
         for (int fi = Food.Count - 1; fi >= 0; fi--) {
             var egg = Food[fi];
-            double dx = Head.CurrentScreenPos.X - egg.ScreenX, dy = Head.CurrentScreenPos.Y - egg.ScreenY;
+            double dx = Head.CurrentScreenPos.X - egg.ScreenPos.X, dy = Head.CurrentScreenPos.Y - egg.ScreenPos.Y;
             if (dx * dx + dy * dy >= _eatDistSq) continue;
             Score++;
             for (int p = 0; p < 8; p++) {
                 double angle = (p / 8.0) * Math.PI * 2 + Random.Shared.NextDouble() * 0.5;
                 double speed = 1.5 + Random.Shared.NextDouble() * 2;
                 EatParticles.Add(new EatParticle {
-                    X = egg.ScreenX,
-                    Y = egg.ScreenY,
+                    X = egg.ScreenPos.X,
+                    Y = egg.ScreenPos.Y,
                     Vx = Math.Cos(angle) * speed,
                     Vy = Math.Sin(angle) * speed,
                     Life = 1.0,
@@ -508,9 +501,9 @@ public class Snake {
         double bestDist = double.MaxValue;
         (double X, double Y)? bestPos = null;
         foreach (var f in Food) {
-            double dx = f.ScreenX - hx, dy = f.ScreenY - hy;
+            double dx = f.ScreenPos.X - hx, dy = f.ScreenPos.Y - hy;
             double d = dx * dx + dy * dy;
-            if (d < bestDist) { bestDist = d; bestPos = (f.ScreenX, f.ScreenY); }
+            if (d < bestDist) { bestDist = d; bestPos = (f.ScreenPos.X, f.ScreenPos.Y); }
         }
         return bestPos;
     }

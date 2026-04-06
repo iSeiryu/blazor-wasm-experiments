@@ -217,13 +217,13 @@ public partial class NeonSnake : IAsyncDisposable {
         // Pass 1: non-running (static) eggs — use cached sprite
         foreach (var egg in _snake.Food) {
             if (egg.Running) continue;
-            var cx = egg.ScreenX;
-            var cy = egg.ScreenY;
+            var cx = egg.ScreenPos.X;
+            var cy = egg.ScreenPos.Y;
 
             if (cx + cullMargin < camX || cx - cullMargin > viewRight) continue;
             if (cy + cullMargin < camY || cy - cullMargin > viewBottom) continue;
 
-            var bob = Math.Sin(now * 0.003 + egg.X * 2.1 + egg.Y * 3.7) * 2.5;
+            var bob = Math.Sin(now * 0.003 + egg.GridPos.X * 2.1 + egg.GridPos.Y * 3.7) * 2.5;
             var dy = cy + bob;
 
             // Offscreen-cached egg sprite (glow + body + outline + speckles + highlight)
@@ -255,8 +255,8 @@ public partial class NeonSnake : IAsyncDisposable {
         var walkPhase = (now * 0.007) % DoublePI;
         foreach (var egg in _snake.Food) {
             if (!egg.Running) continue;
-            var cx = egg.ScreenX;
-            var cy = egg.ScreenY;
+            var cx = egg.ScreenPos.X;
+            var cy = egg.ScreenPos.Y;
 
             if (cx + cullMargin < camX || cx - cullMargin > viewRight) continue;
             if (cy + cullMargin < camY || cy - cullMargin > viewBottom) continue;
@@ -565,8 +565,8 @@ public partial class NeonSnake : IAsyncDisposable {
         const int spikes = 6;
 
         foreach (var m in _snake.Monsters) {
-            var x = m.ScreenX;
-            var y = m.ScreenY;
+            var x = m.ScreenPos.X;
+            var y = m.ScreenPos.Y;
 
             if (x + cullMargin < camX || x - cullMargin > camX + _screenW) continue;
             if (y + cullMargin < camY || y - cullMargin > camY + _gameAreaH) continue;
